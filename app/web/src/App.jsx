@@ -973,125 +973,206 @@ function ExoticSection({ data, onNavigateDefinition, embedded }) {
 
       <div className="table-wrap">
         {displayMode === "box" ? (
-          <table className="data dense">
-            <thead>
-              <tr>
-                <th scope="col">Horses</th>
-                <th scope="col">
-                  <div className="th-ranking th-ranking--exotic">
-                    <span>Rel. Strength</span>
-                    <GlossaryTerm
-                      variant="icon-only"
-                      name="Rel. Strength"
-                      defId="naive-p"
-                      summary="Share of the strongest entry on this box list (combined naive probability); top row = 100%."
-                      onNavigate={onNavigateDefinition}
-                    >
-                      Rel. Strength
-                    </GlossaryTerm>
-                  </div>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
+          <>
+            <table className="data dense exotic-box-table exotic-box-table--desktop">
+              <thead>
+                <tr>
+                  <th scope="col">Horses</th>
+                  <th scope="col">
+                    <div className="th-ranking th-ranking--exotic">
+                      <span>Rel. Strength</span>
+                      <GlossaryTerm
+                        variant="icon-only"
+                        name="Rel. Strength"
+                        defId="naive-p"
+                        summary="Share of the strongest entry on this box list (combined naive probability); top row = 100%."
+                        onNavigate={onNavigateDefinition}
+                      >
+                        Rel. Strength
+                      </GlossaryTerm>
+                    </div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {boxRows.map((row) => {
+                  const rel = maxBox > 0 ? row.sum / maxBox : 0;
+                  const relPct = `${(rel * 100).toFixed(1)}%`;
+                  return (
+                    <tr key={row.key}>
+                      <td className="exotic-box-horses">
+                        {row.horsesSorted.map((name, hi) => (
+                          <span key={name} className="exotic-box-horse">
+                            {hi > 0 ? (
+                              <span className="exotic-box-sep" aria-hidden>
+                                {" "}
+                                ·{" "}
+                              </span>
+                            ) : null}
+                            <HorseLink name={name} />
+                          </span>
+                        ))}
+                      </td>
+                      <td className="exotic-box-strength-cell">
+                        <div
+                          className="exotic-bar-row exotic-bar-row--table"
+                          title={`${relPct} of top box`}
+                        >
+                          <div className="bar-track">
+                            <div
+                              className="bar-fill"
+                              style={{ width: `${rel * 100}%` }}
+                            />
+                          </div>
+                          <span className="bar-val mono">{relPct}</span>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            <ul
+              className="barlist exotic-box-barlist"
+              aria-label={`${data.bet_type} box tickets (mobile)`}
+            >
               {boxRows.map((row) => {
                 const rel = maxBox > 0 ? row.sum / maxBox : 0;
                 const relPct = `${(rel * 100).toFixed(1)}%`;
                 return (
-                  <tr key={row.key}>
-                    <td className="exotic-box-horses">
+                  <li key={`m-${row.key}`}>
+                    <span className="bar-name-wrap">
                       {row.horsesSorted.map((name, hi) => (
-                        <span key={name} className="exotic-box-horse">
+                        <span key={name}>
                           {hi > 0 ? (
                             <span className="exotic-box-sep" aria-hidden>
                               {" "}
                               ·{" "}
                             </span>
                           ) : null}
-                          <HorseLink name={name} />
+                          <HorseLink name={name} className="bar-name" />
                         </span>
                       ))}
-                    </td>
-                    <td className="exotic-box-strength-cell">
+                    </span>
+                    <div
+                      className="bar-track"
+                      title={`${relPct} of top box`}
+                    >
                       <div
-                        className="exotic-bar-row exotic-bar-row--table"
-                        title={`${relPct} of top box`}
-                      >
-                        <div className="bar-track">
-                          <div
-                            className="bar-fill"
-                            style={{ width: `${rel * 100}%` }}
-                          />
-                        </div>
-                        <span className="bar-val mono">{relPct}</span>
-                      </div>
-                    </td>
-                  </tr>
+                        className="bar-fill"
+                        style={{ width: `${rel * 100}%` }}
+                      />
+                    </div>
+                    <span className="bar-val mono">{relPct}</span>
+                  </li>
                 );
               })}
-            </tbody>
-          </table>
+            </ul>
+          </>
         ) : (
-          <table className="data dense">
-            <thead>
-              <tr>
-                {cols.map((c) => (
-                  <th key={c}>{c}</th>
-                ))}
-                <th scope="col">
-                  <div className="th-ranking th-ranking--exotic">
-                    <span>Rel. Strength</span>
-                    <GlossaryTerm
-                      variant="icon-only"
-                      name="Rel. Strength"
-                      defId="naive-p"
-                      summary="Share of the strongest ticket on this list (naive probability); top row = 100%."
-                      onNavigate={onNavigateDefinition}
-                    >
-                      Rel. Strength
-                    </GlossaryTerm>
-                  </div>
-                </th>
-                <th
-                  scope="col"
-                  className="exotic-bar-col"
-                  aria-label="Rel. Strength bar"
-                >
-                  <span className="sr-only">Strength</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
+          <>
+            <table
+              className={`data dense exotic-straight-table exotic-straight-table--desktop`}
+            >
+              <thead>
+                <tr>
+                  {cols.map((c) => (
+                    <th key={c}>{c}</th>
+                  ))}
+                  <th scope="col">
+                    <div className="th-ranking th-ranking--exotic">
+                      <span>Rel. Strength</span>
+                      <GlossaryTerm
+                        variant="icon-only"
+                        name="Rel. Strength"
+                        defId="naive-p"
+                        summary="Share of the strongest ticket on this list (naive probability); top row = 100%."
+                        onNavigate={onNavigateDefinition}
+                      >
+                        Rel. Strength
+                      </GlossaryTerm>
+                    </div>
+                  </th>
+                  <th
+                    scope="col"
+                    className="exotic-bar-col"
+                    aria-label="Rel. Strength bar"
+                  >
+                    <span className="sr-only">Strength</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.tickets.map((t, i) => {
+                  const p = t.naive_probability;
+                  const rel =
+                    maxStraight > 0 && p != null ? p / maxStraight : 0;
+                  const relPct = `${(rel * 100).toFixed(1)}%`;
+                  return (
+                    <tr key={i}>
+                      {cols.map((c) => (
+                        <td key={c}>
+                          <HorseLink name={t[c]} />
+                        </td>
+                      ))}
+                      <td className="mono exotic-rel-pct">{relPct}</td>
+                      <td className="exotic-bar-cell">
+                        <div
+                          className="exotic-straight-bar-wrap"
+                          title={`${relPct} of top ticket`}
+                        >
+                          <div className="bar-track">
+                            <div
+                              className="bar-fill"
+                              style={{ width: `${rel * 100}%` }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            <ul
+              className="barlist exotic-straight-barlist"
+              aria-label={`${data.bet_type} straight tickets (mobile)`}
+            >
               {data.tickets.map((t, i) => {
                 const p = t.naive_probability;
                 const rel =
                   maxStraight > 0 && p != null ? p / maxStraight : 0;
                 const relPct = `${(rel * 100).toFixed(1)}%`;
                 return (
-                  <tr key={i}>
-                    {cols.map((c) => (
-                      <td key={c}>
-                        <HorseLink name={t[c]} />
-                      </td>
-                    ))}
-                    <td className="mono exotic-rel-pct">{relPct}</td>
-                    <td className="exotic-bar-cell">
+                  <li key={`m-${i}`}>
+                    <span className="bar-name-wrap">
+                      {cols.map((c, ci) => (
+                        <span key={c}>
+                          {ci > 0 ? (
+                            <span className="exotic-box-sep" aria-hidden>
+                              {" "}
+                              ·{" "}
+                            </span>
+                          ) : null}
+                          <HorseLink name={t[c]} className="bar-name" />
+                        </span>
+                      ))}
+                    </span>
+                    <div
+                      className="bar-track"
+                      title={`${relPct} of top ticket`}
+                    >
                       <div
-                        className="exotic-rel-bar-track"
-                        aria-hidden
-                        title={`${relPct} of top ticket`}
-                      >
-                        <div
-                          className="exotic-rel-bar-fill"
-                          style={{ width: `${rel * 100}%` }}
-                        />
-                      </div>
-                    </td>
-                  </tr>
+                        className="bar-fill"
+                        style={{ width: `${rel * 100}%` }}
+                      />
+                    </div>
+                    <span className="bar-val mono">{relPct}</span>
+                  </li>
                 );
               })}
-            </tbody>
-          </table>
+            </ul>
+          </>
         )}
       </div>
     </>
