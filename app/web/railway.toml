@@ -1,0 +1,9 @@
+# Used when this service's Root Directory is set to `app/web` in Railway.
+# See: https://docs.railway.com/deployments/monorepo
+
+[build]
+builder = "nixpacks"
+buildCommand = "npm ci && npm run build"
+
+[deploy]
+startCommand = "npm run start"
