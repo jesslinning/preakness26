@@ -1,0 +1,10 @@
+# Shim: Railway may have Settings → Config-as-code path = `app/web/railway.toml`.
+# Keep [build]/[deploy] in sync with ../../railway.toml (repo root).
+# To use a single file: clear that path in Railway so only repo-root railway.toml applies.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+healthcheckPath = "/api/health"
