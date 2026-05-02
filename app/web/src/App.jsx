@@ -1,4 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { DefinitionsTab } from "./Definitions.jsx";
 import { GlossaryTerm } from "./GlossaryTerm.jsx";
 import { HorseLink } from "./HorseLink.jsx";
@@ -7,16 +12,65 @@ import { exoticScenarioFromJsonMeta } from "./exoticScenarios.js";
 const TABS = [
   { id: "overview", label: "Overview" },
   { id: "rankings", label: "Rankings" },
-  { id: "exacta", label: "Exacta" },
-  { id: "trifecta", label: "Trifecta" },
-  { id: "superfecta", label: "Superfecta" },
+  { id: "exotics", label: "Exotics" },
   { id: "models", label: "Models" },
   { id: "definitions", label: "Definitions" },
 ];
 
+const EXOTIC_KINDS = ["exacta", "trifecta", "superfecta"];
+
 function pct(x) {
   if (x == null || Number.isNaN(x)) return "—";
   return `${(x * 100).toFixed(2)}%`;
+}
+
+/** Adaptive precision so tiny chained probabilities are not all "0.00%". */
+function formatNaiveP(p) {
+  if (p == null || Number.isNaN(p)) return "—";
+  if (p <= 0) return "0%";
+  const pct100 = p * 100;
+  if (pct100 >= 0.01) return `${pct100.toFixed(2)}%`;
+  if (pct100 >= 0.0001) return `${pct100.toFixed(4)}%`;
+  return `${pct100.toFixed(6)}%`;
+}
+
+/** Canonical key for an unordered set of horses (box-style grouping). */
+function boxKeyFromTicket(ticket, cols) {
+  const names = cols.map((c) => ticket[c]).filter((x) => x != null && x !== "");
+  return [...names]
+    .sort((a, b) =>
+      String(a).localeCompare(String(b), undefined, { sensitivity: "base" })
+    )
+    .join("|");
+}
+
+/**
+ * Sum naive probabilities for tickets sharing the same unordered horse set.
+ * Only permutations present in `tickets` are included (respects list truncation).
+ */
+function aggregateBoxRows(tickets, cols) {
+  const map = new Map();
+  for (const t of tickets) {
+    const key = boxKeyFromTicket(t, cols);
+    const p = Number(t.naive_probability);
+    const safeP = Number.isFinite(p) ? p : 0;
+    const prev = map.get(key);
+    if (prev) {
+      prev.sum += safeP;
+      prev.count += 1;
+    } else {
+      const horses = cols.map((c) => t[c]);
+      map.set(key, {
+        key,
+        horsesSorted: [...horses].sort((a, b) =>
+          String(a).localeCompare(String(b), undefined, { sensitivity: "base" })
+        ),
+        sum: safeP,
+        count: 1,
+      });
+    }
+  }
+  return [...map.values()].sort((a, b) => b.sum - a.sum);
 }
 
 function fmtScore(x) {
@@ -150,6 +204,7 @@ export default function App() {
   /** While focused, raw string in the percent number box (optional decimals). */
   const [blendPercentDraft, setBlendPercentDraft] = useState(null);
   const [clockTick, setClockTick] = useState(0);
+  const [exoticKind, setExoticKind] = useState("exacta");
 
   const goToDefinition = useCallback((defId) => {
     setTab("definitions");
@@ -382,6 +437,12 @@ export default function App() {
         : null,
     [horsesEnriched, scenarios?.superfecta]
   );
+
+  const exoticDataLive = useMemo(() => {
+    if (exoticKind === "exacta") return exactaLive;
+    if (exoticKind === "trifecta") return trifectaLive;
+    return superfectaLive;
+  }, [exoticKind, exactaLive, trifectaLive, superfectaLive]);
 
   if (error) {
     return (
@@ -777,14 +838,37 @@ export default function App() {
         </section>
       )}
 
-      {tab === "exacta" && (
-        <ExoticSection data={exactaLive} onNavigateDefinition={goToDefinition} />
-      )}
-      {tab === "trifecta" && (
-        <ExoticSection data={trifectaLive} onNavigateDefinition={goToDefinition} />
-      )}
-      {tab === "superfecta" && (
-        <ExoticSection data={superfectaLive} onNavigateDefinition={goToDefinition} />
+      {tab === "exotics" && (
+        <section className="card exotic-card">
+          <div
+            className="exotic-segments"
+            role="tablist"
+            aria-label="Exotic bet type"
+          >
+            {EXOTIC_KINDS.map((k) => (
+              <button
+                key={k}
+                type="button"
+                role="tab"
+                aria-selected={exoticKind === k}
+                className={
+                  exoticKind === k
+                    ? "exotic-segment exotic-segment--active"
+                    : "exotic-segment"
+                }
+                onClick={() => setExoticKind(k)}
+              >
+                {k.charAt(0).toUpperCase() + k.slice(1)}
+              </button>
+            ))}
+          </div>
+          <ExoticSection
+            key={exoticKind}
+            data={exoticDataLive}
+            onNavigateDefinition={goToDefinition}
+            embedded
+          />
+        </section>
       )}
 
       {tab === "definitions" && <DefinitionsTab />}
@@ -822,18 +906,32 @@ export default function App() {
   );
 }
 
-function ExoticSection({ data, onNavigateDefinition }) {
+function ExoticSection({ data, onNavigateDefinition, embedded }) {
+  const [displayMode, setDisplayMode] = useState("box");
+
+  const cols = useMemo(() => {
+    if (!data?.bet_type) return [];
+    if (data.bet_type === "exacta") return ["first", "second"];
+    if (data.bet_type === "trifecta") return ["first", "second", "third"];
+    return ["first", "second", "third", "fourth"];
+  }, [data?.bet_type]);
+
+  const boxRows = useMemo(() => {
+    if (!data?.tickets?.length || cols.length === 0) return [];
+    return aggregateBoxRows(data.tickets, cols);
+  }, [data?.tickets, cols]);
+
+  const empty = <p className="muted">No scenario data.</p>;
   if (!data?.tickets?.length) {
-    return (
-      <section className="card">
-        <p className="muted">No scenario data.</p>
-      </section>
-    );
+    return embedded ? empty : <section className="card">{empty}</section>;
   }
-  const cols = data.bet_type === "exacta" ? ["first", "second"] : data.bet_type === "trifecta" ? ["first", "second", "third"] : ["first", "second", "third", "fourth"];
-  return (
-    <section className="card">
-      <h2 style={{ textTransform: "capitalize" }}>{data.bet_type}</h2>
+
+  const maxStraight = data.tickets[0]?.naive_probability ?? 0;
+  const maxBox = boxRows[0]?.sum ?? 0;
+
+  const inner = (
+    <>
+      <h2 className="exotic-section__title">{data.bet_type}</h2>
       <p className="muted">
         Preset: <code className="mono">{data.preset}</code> · Top{" "}
         <strong>{data.top_n}</strong> horses considered · Showing{" "}
@@ -842,43 +940,213 @@ function ExoticSection({ data, onNavigateDefinition }) {
         <strong>${data.total_cost?.toFixed?.(2) ?? data.total_cost}</strong>
       </p>
       <p className="fine-print">{data.tickets[0]?.note}</p>
-      <div className="table-wrap">
-        <table className="data dense">
-          <thead>
-            <tr>
-              {cols.map((c) => (
-                <th key={c}>{c}</th>
-              ))}
-              <th scope="col">
-                <div className="th-ranking th-ranking--exotic">
-                  <span>Naive P</span>
-                  <GlossaryTerm
-                    variant="icon-only"
-                    name="Naive P"
-                    defId="naive-p"
-                    summary="Rough chained probability for this exact finishing order from the same composite as Rankings (optional market blend)—useful for comparing tickets, not for matching live pool odds."
-                    onNavigate={onNavigateDefinition}
-                  >
-                    Naive P
-                  </GlossaryTerm>
-                </div>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.tickets.map((t, i) => (
-              <tr key={i}>
-                {cols.map((c) => (
-                  <td key={c}>
-                    <HorseLink name={t[c]} />
-                  </td>
-                ))}
-                <td className="mono">{pct(t.naive_probability)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+
+      <div
+        className="exotic-view-toggle"
+        role="group"
+        aria-label="Ticket display mode"
+      >
+        <span className="exotic-view-toggle__label">View</span>
+        <button
+          type="button"
+          className={
+            displayMode === "box"
+              ? "exotic-view-btn exotic-view-btn--active"
+              : "exotic-view-btn"
+          }
+          aria-pressed={displayMode === "box"}
+          onClick={() => setDisplayMode("box")}
+        >
+          Box
+        </button>
+        <button
+          type="button"
+          className={
+            displayMode === "straight"
+              ? "exotic-view-btn exotic-view-btn--active"
+              : "exotic-view-btn"
+          }
+          aria-pressed={displayMode === "straight"}
+          onClick={() => setDisplayMode("straight")}
+        >
+          Straight
+        </button>
       </div>
-    </section>
+
+      {displayMode === "box" ? (
+        <p className="fine-print exotic-view-hint">
+          Horses grouped by set (any finish order). Naive P is the{" "}
+          <strong>sum</strong> of each listed straight ticket that uses that set—only permutations
+          that appear in this table are included.
+        </p>
+      ) : null}
+
+      <div className="table-wrap">
+        {displayMode === "box" ? (
+          <table className="data dense">
+            <thead>
+              <tr>
+                <th scope="col">Horses</th>
+                <th scope="col">
+                  <div className="th-ranking th-ranking--exotic">
+                    <span>Naive P (combined)</span>
+                    <GlossaryTerm
+                      variant="icon-only"
+                      name="Combined naive probability"
+                      defId="naive-p"
+                      summary="Sum of naive probabilities for each straight ticket in this list that matches the same horse set (unordered)."
+                      onNavigate={onNavigateDefinition}
+                    >
+                      Naive P (combined)
+                    </GlossaryTerm>
+                  </div>
+                </th>
+                <th scope="col" title="Finish orders from this table that belong to this set">
+                  Orders
+                </th>
+                <th scope="col">
+                  <div className="th-ranking th-ranking--exotic">
+                    <span>Rel.</span>
+                    <GlossaryTerm
+                      variant="icon-only"
+                      name="Relative naive strength"
+                      defId="naive-p"
+                      summary="Share of the strongest combined naive probability on this box list (top = 100%)."
+                      onNavigate={onNavigateDefinition}
+                    >
+                      Rel.
+                    </GlossaryTerm>
+                  </div>
+                </th>
+                <th
+                  scope="col"
+                  className="exotic-bar-col"
+                  aria-label="Relative strength bar"
+                >
+                  <span className="sr-only">Strength</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {boxRows.map((row) => {
+                const rel = maxBox > 0 ? row.sum / maxBox : 0;
+                const relPct = `${(rel * 100).toFixed(1)}%`;
+                return (
+                  <tr key={row.key}>
+                    <td className="exotic-box-horses">
+                      {row.horsesSorted.map((name, hi) => (
+                        <span key={name} className="exotic-box-horse">
+                          {hi > 0 ? (
+                            <span className="exotic-box-sep" aria-hidden>
+                              {" "}
+                              ·{" "}
+                            </span>
+                          ) : null}
+                          <HorseLink name={name} />
+                        </span>
+                      ))}
+                    </td>
+                    <td className="mono">{formatNaiveP(row.sum)}</td>
+                    <td className="mono muted">{row.count}</td>
+                    <td className="mono exotic-rel-pct">{relPct}</td>
+                    <td className="exotic-bar-cell">
+                      <div
+                        className="exotic-rel-bar-track"
+                        aria-hidden
+                        title={`${relPct} of top box`}
+                      >
+                        <div
+                          className="exotic-rel-bar-fill"
+                          style={{ width: `${rel * 100}%` }}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        ) : (
+          <table className="data dense">
+            <thead>
+              <tr>
+                {cols.map((c) => (
+                  <th key={c}>{c}</th>
+                ))}
+                <th scope="col">
+                  <div className="th-ranking th-ranking--exotic">
+                    <span>Naive P</span>
+                    <GlossaryTerm
+                      variant="icon-only"
+                      name="Naive P"
+                      defId="naive-p"
+                      summary="Rough chained probability for this exact finishing order from the same composite as Rankings (optional market blend)—useful for comparing tickets, not for matching live pool odds."
+                      onNavigate={onNavigateDefinition}
+                    >
+                      Naive P
+                    </GlossaryTerm>
+                  </div>
+                </th>
+                <th scope="col">
+                  <div className="th-ranking th-ranking--exotic">
+                    <span>Rel.</span>
+                    <GlossaryTerm
+                      variant="icon-only"
+                      name="Relative naive strength"
+                      defId="naive-p"
+                      summary="Share of the strongest ticket’s naive probability on this list (top = 100%). Easier to scan than tiny absolute percentages."
+                      onNavigate={onNavigateDefinition}
+                    >
+                      Rel.
+                    </GlossaryTerm>
+                  </div>
+                </th>
+                <th
+                  scope="col"
+                  className="exotic-bar-col"
+                  aria-label="Relative strength bar"
+                >
+                  <span className="sr-only">Strength</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.tickets.map((t, i) => {
+                const p = t.naive_probability;
+                const rel =
+                  maxStraight > 0 && p != null ? p / maxStraight : 0;
+                const relPct = `${(rel * 100).toFixed(1)}%`;
+                return (
+                  <tr key={i}>
+                    {cols.map((c) => (
+                      <td key={c}>
+                        <HorseLink name={t[c]} />
+                      </td>
+                    ))}
+                    <td className="mono">{formatNaiveP(p)}</td>
+                    <td className="mono exotic-rel-pct">{relPct}</td>
+                    <td className="exotic-bar-cell">
+                      <div
+                        className="exotic-rel-bar-track"
+                        aria-hidden
+                        title={`${relPct} of top ticket`}
+                      >
+                        <div
+                          className="exotic-rel-bar-fill"
+                          style={{ width: `${rel * 100}%` }}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </>
   );
+
+  if (embedded) return inner;
+  return <section className="card">{inner}</section>;
 }

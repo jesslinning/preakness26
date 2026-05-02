@@ -250,6 +250,123 @@ h1 {
   cursor: not-allowed;
 }
 
+.exotic-card .exotic-segments {
+  margin-bottom: 1rem;
+}
+
+.exotic-segments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.exotic-segment {
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.exotic-segment:hover {
+  border-color: var(--gold);
+  color: var(--text);
+}
+
+.exotic-segment--active {
+  border-color: var(--gold);
+  background: rgba(197, 160, 89, 0.14);
+  color: var(--text);
+}
+
+.exotic-view-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.65rem;
+  margin: 0.65rem 0 0.35rem;
+}
+
+.exotic-view-toggle__label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted);
+  margin-right: 0.15rem;
+}
+
+.exotic-view-btn {
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.35rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.exotic-view-btn:hover {
+  border-color: var(--gold);
+  color: var(--text);
+}
+
+.exotic-view-btn--active {
+  border-color: var(--gold);
+  background: rgba(197, 160, 89, 0.14);
+  color: var(--text);
+}
+
+.fine-print.exotic-view-hint {
+  margin-top: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+
+.exotic-box-horses {
+  line-height: 1.5;
+}
+
+.exotic-section__title {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  text-transform: capitalize;
+  font-size: 1.35rem;
+}
+
+.exotic-bar-col {
+  width: 3.25rem;
+}
+
+.exotic-bar-cell {
+  vertical-align: middle;
+  padding-left: 0.25rem;
+  padding-right: 0.35rem;
+}
+
+.exotic-rel-pct {
+  white-space: nowrap;
+}
+
+.exotic-rel-bar-track {
+  height: 6px;
+  width: 100%;
+  max-width: 4rem;
+  border-radius: 4px;
+  background: rgba(87, 83, 78, 0.18);
+  overflow: hidden;
+}
+
+.exotic-rel-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--gold-soft), var(--gold));
+  min-width: 1px;
+}
+
 .glossary-mobile-hint {
   margin: 1rem 0 0;
   padding: 0.65rem 0.85rem;

@@ -171,12 +171,25 @@ export function DefinitionsTab() {
       <section className="card def-card" id="def-naive-p">
         <h2>Naive P</h2>
         <p>
-          Short for <strong>naive probability</strong>: the percentage shown on exacta, trifecta,
-          and superfecta tables for one <em>ordered</em> ticket. It comes from the softmax chain
-          on the <strong>Softmax chains</strong> card above—using the same per-horse composite as
-          the Rankings tab (including optional market blend when live odds are loaded)—pick 1st
+          Short for <strong>naive probability</strong>: the percentage shown on the{" "}
+          <strong>Exotics</strong> tables for one <em>ordered</em> ticket. It comes from the softmax
+          chain on the <strong>Softmax chains</strong> card above—using the same per-horse composite
+          as the Rankings tab (including optional market blend when live odds are loaded)—pick 1st
           from the whole field, then 2nd from who is left, then 3rd and 4th the same way—and
           multiply those steps together to get one number for that exact finishing order.
+        </p>
+        <p>
+          Raw naive probabilities are often <strong>tiny</strong>, so this app adds decimal places
+          when needed so rows are not all “0.00%”. The <strong>Rel.</strong> column gives each ticket
+          as a percentage of the <strong>strongest ticket on the current list</strong> (the top row is
+          always 100%). The narrow bar is the same ratio—useful for spotting gaps between tickets
+          without reading microscopic percentages.
+        </p>
+        <p>
+          Use <strong>Box</strong> on Exotics to group horses as an unordered set and show{" "}
+          <strong>combined</strong> naive probability (sum over straight tickets in the table that
+          share those horses). Switch to <strong>Straight</strong> to see each exact finishing order
+          and its own naive probability—the usual straight-ticket view.
         </p>
         <p>
           Think of it as a <strong>storybook fair comparison</strong>: every ticket is priced with
@@ -199,7 +212,7 @@ export function DefinitionsTab() {
             live market mix) and the building blocks. Tap a column header to sort by that number
             or by name.</dd>
 
-          <dt>Top N (exotic tabs)</dt>
+          <dt>Top N (Exotics)</dt>
           <dd>Only ordered bets built from the strongest handful of horses (by that screen’s
             score) are listed, to keep the list manageable. Anyone outside that group is left
             out even if they could still hit.</dd>
