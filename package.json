@@ -3,7 +3,8 @@
   "private": true,
   "description": "Root package.json so Railway/Nixpacks installs Node+npm alongside Python (see requirements.txt).",
   "scripts": {
-    "build": "cd app/web && NPM_CONFIG_CACHE=/tmp/npm-cache npm install --no-audit --no-fund && npm run build"
+    "build": "cd app/web && NPM_CONFIG_CACHE=/tmp/npm-cache npm install --no-audit --no-fund && npm run build",
+    "start": "sh -c 'PYTHONPATH=. python -m uvicorn app.odds_api:app --host 0.0.0.0 --port ${PORT:-8000}'"
   },
   "engines": {
     "node": ">=18"
