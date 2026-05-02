@@ -17,9 +17,10 @@ export function DefinitionsTab() {
         <h2>Composite score</h2>
         <p>
           One <strong>overall rating per horse</strong> so you can sort the whole field on a
-          single scale. It mixes three ideas: how likely the horse is to finish in the Top 3,
-          how likely in the Top 5, and how strongly the finish-position models like the horse.
-          This is a <em>rough</em> ranking tool—not a precise “chance to win the Derby” number.
+          single scale. Under the hood it mixes three ideas: how likely the horse is to finish
+          in the Top 3, how likely in the Top 5, and how strongly the finish-position models
+          like the horse. This is a <em>rough</em> ranking tool—not a precise “chance to win
+          the Derby” number.
         </p>
         <p>
           Those three pieces are blended using fixed <strong>weights</strong> (by default: half
@@ -27,6 +28,14 @@ export function DefinitionsTab() {
           classifiers already speak in chances between 0 and 100%; finish predictions are
           converted to <strong>FP strength</strong> (below) so “expected place” does not drown
           out everything else.
+        </p>
+        <p>
+          When <strong>live pool odds</strong> are matched to a horse, the same column can
+          further mix in <strong>market strength</strong> (see <a href="#def-market-blend">Market
+          blend (α)</a>): <strong>(1 − α) ×</strong> that model blend <strong>+ α ×</strong> market
+          strength. If no odds match, the score stays model-only. Exacta, trifecta, and superfecta
+          naive probabilities use this same composite so they move with the slider when odds are
+          loaded.
         </p>
         <p>
           If those weights were changed, the order of horses would change too—you would still
@@ -80,20 +89,28 @@ export function DefinitionsTab() {
       <section className="card def-card" id="def-market-blend">
         <h2>Market blend (α)</h2>
         <p>
-          When live pool odds are matched to a horse, you can mix a little of the{" "}
-          <strong>market strength</strong> into the model composite. Alpha is the weight on
-          that market term; <strong>(1 − α)</strong> stays on the original composite. If no
-          odds match, the score stays model-only.
+          When the live odds feed lists a horse by name, you can tilt the{" "}
+          <a href="#def-composite-score">Composite score</a> toward what the betting pool is
+          doing. The slider sets <strong>α</strong> (alpha): each horse’s composite becomes{" "}
+          <strong>(1 − α) × model composite + α × market strength</strong>. Here{" "}
+          <strong>model composite</strong> is the blended Top 3 / Top 5 / FP score from the CSV
+          models alone; <strong>market strength</strong> is a 0–1 rank among horses that appear
+          on the odds page (see <a href="#def-market-strength-live">Market strength (live)</a>).
         </p>
-      </section>
-
-      <section className="card def-card" id="def-composite-with-market">
-        <h2>Composite plus market</h2>
         <p>
-          <strong>(1 − α) × composite</strong> plus <strong>α × market strength</strong> when
-          fractional odds from the official live odds page line up with this horse’s name.
-          It is still a <strong>rough ranking</strong>, not a calibrated win probability—now
-          with a nod to what the betting pool is doing.
+          If a runner <strong>does not</strong> appear on the live odds page, there is no market
+          term for that horse—the composite stays <strong>model-only</strong> for them even while
+          other horses get the mix. That is why favorites with pool money can move up in the table
+          while a long shot missing from the widget stays on pure model scores.
+        </p>
+        <p>
+          Use the header <strong>slider (0%–100%)</strong> or <strong>type a percent</strong> in
+          the small box to set α: <strong>0%</strong> means no pool weight (model-only for horses
+          that have market data; still model-only for names not on the widget), and{" "}
+          <strong>100%</strong> means use only market strength where it exists. Values in between
+          interpolate. Exacta, trifecta, and superfecta tables use the <strong>same</strong> blended
+          composite, so changing the blend reshapes those “naive” ticket probabilities too when odds
+          are loaded.
         </p>
       </section>
 
@@ -138,7 +155,8 @@ export function DefinitionsTab() {
           builds a <em>rough</em> storybook probability by repeating a simple pattern:
         </p>
         <ol className="def-list">
-          <li>Pick 1st using a softmax over the <strong>whole</strong> field.</li>
+          <li>Pick 1st using a softmax over the <strong>whole</strong> field (scores = Composite,
+            including optional market blend when live odds match).</li>
           <li>Remove that horse, then pick 2nd from the <strong>remaining</strong> horses with
             the same style of split.</li>
           <li>Do the same for 3rd and 4th when you are looking at tris and supers.</li>
@@ -155,9 +173,10 @@ export function DefinitionsTab() {
         <p>
           Short for <strong>naive probability</strong>: the percentage shown on exacta, trifecta,
           and superfecta tables for one <em>ordered</em> ticket. It comes from the softmax chain
-          on the <strong>Softmax chains</strong> card above—pick 1st from the whole field, then
-          2nd from who is left, then 3rd and 4th the same way—and multiply those steps together
-          to get one number for that exact finishing order.
+          on the <strong>Softmax chains</strong> card above—using the same per-horse composite as
+          the Rankings tab (including optional market blend when live odds are loaded)—pick 1st
+          from the whole field, then 2nd from who is left, then 3rd and 4th the same way—and
+          multiply those steps together to get one number for that exact finishing order.
         </p>
         <p>
           Think of it as a <strong>storybook fair comparison</strong>: every ticket is priced with
@@ -176,8 +195,9 @@ export function DefinitionsTab() {
             straight combination of those three ideas (each scaled so higher = better).</dd>
 
           <dt>Rankings tab</dt>
-          <dd>Full prediction table for the field: composite score plus the building blocks. Tap
-            a column header to sort by that number or by name.</dd>
+          <dd>Full prediction table for the field: one composite score (model blend plus optional
+            live market mix) and the building blocks. Tap a column header to sort by that number
+            or by name.</dd>
 
           <dt>Top N (exotic tabs)</dt>
           <dd>Only ordered bets built from the strongest handful of horses (by that screen’s

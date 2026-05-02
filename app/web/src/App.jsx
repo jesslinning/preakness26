@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { DefinitionsTab } from "./Definitions.jsx";
 import { GlossaryTerm } from "./GlossaryTerm.jsx";
 import { HorseLink } from "./HorseLink.jsx";
+import { exoticScenarioFromJsonMeta } from "./exoticScenarios.js";
 
 const TABS = [
   { id: "overview", label: "Overview" },
@@ -75,7 +76,7 @@ function formatLiveOddsTimestamp(iso, tick) {
 
 function enrichHorses(horses, oddsLookup, marketAlpha) {
   const a = Number(marketAlpha);
-  const alpha = Number.isFinite(a) ? Math.min(0.5, Math.max(0, a)) : 0.1;
+  const alpha = Number.isFinite(a) ? Math.min(1, Math.max(0, a)) : 0.1;
   return (horses ?? []).map((h) => {
     const o = oddsLookup?.get(normalizeHorseName(h.horse_name));
     const ms = o?.market_strength;
@@ -139,13 +140,15 @@ export default function App() {
   const [tab, setTab] = useState("overview");
   const [definitionScrollTarget, setDefinitionScrollTarget] = useState(null);
   const [predictionSort, setPredictionSort] = useState({
-    key: "composite_score",
+    key: "composite_with_market",
     dir: "desc",
   });
   const [liveOdds, setLiveOdds] = useState(null);
   const [liveOddsBanner, setLiveOddsBanner] = useState(null);
   const [liveOddsRefreshing, setLiveOddsRefreshing] = useState(false);
   const [marketAlpha, setMarketAlpha] = useState(0.1);
+  /** While focused, raw string in the percent number box (optional decimals). */
+  const [blendPercentDraft, setBlendPercentDraft] = useState(null);
   const [clockTick, setClockTick] = useState(0);
 
   const goToDefinition = useCallback((defId) => {
@@ -274,6 +277,23 @@ export default function App() {
     }
   }, [loadLiveOdds]);
 
+  const commitBlendPercentDraft = useCallback(() => {
+    if (blendPercentDraft === null) return;
+    const t = blendPercentDraft.trim().replace(/%$/u, "");
+    if (t === "") {
+      setBlendPercentDraft(null);
+      return;
+    }
+    const n = parseFloat(t);
+    if (!Number.isFinite(n)) {
+      setBlendPercentDraft(null);
+      return;
+    }
+    const clamped = Math.min(100, Math.max(0, n));
+    setMarketAlpha(Math.round(clamped * 10) / 1000);
+    setBlendPercentDraft(null);
+  }, [blendPercentDraft]);
+
   const oddsLookup = useMemo(
     () => buildOddsLookup(liveOdds?.horses),
     [liveOdds?.horses]
@@ -286,10 +306,8 @@ export default function App() {
 
   const horsesSorted = useMemo(() => {
     if (!horsesEnriched.length) return [];
-    const scoreKey = (h) =>
-      h.market_strength_live != null ? h.composite_with_market : h.composite_score;
     return [...horsesEnriched].sort(
-      (a, b) => (scoreKey(b) ?? 0) - (scoreKey(a) ?? 0)
+      (a, b) => (b.composite_with_market ?? 0) - (a.composite_with_market ?? 0)
     );
   }, [horsesEnriched]);
 
@@ -339,13 +357,31 @@ export default function App() {
 
   const maxComposite = useMemo(() => {
     if (!horsesSorted.length) return 1;
-    const scores = horsesSorted.map((h) =>
-      h.market_strength_live != null
-        ? h.composite_with_market
-        : h.composite_score ?? 0
-    );
+    const scores = horsesSorted.map((h) => h.composite_with_market ?? 0);
     return Math.max(...scores, 1e-9);
   }, [horsesSorted]);
+
+  const exactaLive = useMemo(
+    () =>
+      horsesEnriched.length && scenarios?.exacta
+        ? exoticScenarioFromJsonMeta(horsesEnriched, "exacta", scenarios.exacta)
+        : null,
+    [horsesEnriched, scenarios?.exacta]
+  );
+  const trifectaLive = useMemo(
+    () =>
+      horsesEnriched.length && scenarios?.trifecta
+        ? exoticScenarioFromJsonMeta(horsesEnriched, "trifecta", scenarios.trifecta)
+        : null,
+    [horsesEnriched, scenarios?.trifecta]
+  );
+  const superfectaLive = useMemo(
+    () =>
+      horsesEnriched.length && scenarios?.superfecta
+        ? exoticScenarioFromJsonMeta(horsesEnriched, "superfecta", scenarios.superfecta)
+        : null,
+    [horsesEnriched, scenarios?.superfecta]
+  );
 
   if (error) {
     return (
@@ -373,6 +409,7 @@ export default function App() {
   }
 
   const w = scenarios.blend_weights ?? combined.blend_weights ?? {};
+  const blendPercentTenth = Math.round(marketAlpha * 1000) / 10;
 
   return (
     <div className="shell">
@@ -409,21 +446,60 @@ export default function App() {
                 <GlossaryTerm
                   name="Market blend"
                   defId="market-blend"
-                  summary="How much the pool-implied market strength is mixed into the model composite when live odds are available."
+                  summary="Pool weight 0–100% mixed into the model composite when live odds match a horse (slider or type a percent)."
                   onNavigate={goToDefinition}
                 >
                   Market blend (α)
                 </GlossaryTerm>{" "}
-                <strong className="mono">{marketAlpha.toFixed(2)}</strong>
+                <span className="live-odds-bar__percent-inline" aria-live="polite">
+                  <span className="live-odds-bar__percent-field">
+                    <label htmlFor="market-blend-percent" className="sr-only">
+                      Market blend percent (0 to 100)
+                    </label>
+                    <input
+                      id="market-blend-percent"
+                      type="text"
+                      inputMode="decimal"
+                      className="mono live-odds-bar__percent-input"
+                      autoComplete="off"
+                      spellCheck={false}
+                      aria-label="Market blend percent, type 0 to 100"
+                      value={
+                        blendPercentDraft !== null
+                          ? blendPercentDraft
+                          : String(blendPercentTenth)
+                      }
+                      onChange={(e) => setBlendPercentDraft(e.target.value)}
+                      onFocus={() => setBlendPercentDraft(String(blendPercentTenth))}
+                      onBlur={commitBlendPercentDraft}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          commitBlendPercentDraft();
+                          e.currentTarget.blur();
+                        }
+                      }}
+                    />
+                    <span className="live-odds-bar__percent-suffix" aria-hidden>
+                      %
+                    </span>
+                  </span>
+                </span>
               </span>
               <input
                 type="range"
                 min={0}
-                max={0.35}
-                step={0.01}
-                value={marketAlpha}
-                onChange={(e) => setMarketAlpha(Number(e.target.value))}
-                aria-label="Market blend alpha weight"
+                max={100}
+                step={0.1}
+                value={blendPercentTenth}
+                onChange={(e) => {
+                  const v = Number(e.target.value);
+                  setMarketAlpha(Math.round(v * 10) / 1000);
+                }}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={blendPercentTenth}
+                aria-label="Market blend percent slider"
               />
             </label>
             <button
@@ -488,9 +564,9 @@ export default function App() {
         <section className="card">
           <h2 className="h2-with-glossary">
             <GlossaryTerm
-              name="Composite score"
+              name="Composite"
               defId="composite-score"
-              summary="Weighted mix of average Top 3 likelihood, average Top 5 likelihood, and FP strength—a single ranking score, not a calibrated win probability."
+              summary="Model blend plus optional live market strength when odds match (same scale as exotic softmax scenarios)."
               onNavigate={goToDefinition}
             >
               Composite score
@@ -498,17 +574,13 @@ export default function App() {
             <span className="h2-suffix">(top field)</span>
           </h2>
           <p className="muted">
-            Bar length uses{" "}
-            {horsesEnriched.some((x) => x.market_strength_live != null)
-              ? "composite with market when odds match (same scale as Rankings tab)."
-              : "model composite score (max in field = 100%)."}
+            Composite blends model rankings with optional live pool strength when odds match;
+            bar scale matches Rankings (max in field = 100%). Adjust the blend percentage (α)
+            above when live odds are loaded.
           </p>
           <ul className="barlist">
             {horsesSorted.slice(0, 16).map((h) => {
-              const barScore =
-                h.market_strength_live != null
-                  ? h.composite_with_market
-                  : h.composite_score ?? 0;
+              const barScore = h.composite_with_market ?? 0;
               return (
                 <li key={h.horse_name}>
                   <span className="bar-name-wrap">
@@ -562,7 +634,7 @@ export default function App() {
                     }
                   />
                   <PredictionSortHeader
-                    sortKey="composite_score"
+                    sortKey="composite_with_market"
                     label="Composite"
                     predictionSort={predictionSort}
                     onSort={togglePredictionSort}
@@ -571,27 +643,10 @@ export default function App() {
                         variant="icon-only"
                         name="Composite"
                         defId="composite-score"
-                        summary="Weighted combination of average Top 3 likelihood, average Top 5 likelihood, and FP strength into one ranking score."
+                        summary="Model blend plus optional live market strength when odds match (same scale as exotic softmax scenarios)."
                         onNavigate={goToDefinition}
                       >
                         Composite
-                      </GlossaryTerm>
-                    }
-                  />
-                  <PredictionSortHeader
-                    sortKey="composite_with_market"
-                    label="Composite+market"
-                    predictionSort={predictionSort}
-                    onSort={togglePredictionSort}
-                    glossary={
-                      <GlossaryTerm
-                        variant="icon-only"
-                        name="Composite plus market"
-                        defId="composite-with-market"
-                        summary="Model composite blended with pool-implied market strength when KentuckyDerby.com odds match this horse; otherwise equals Composite."
-                        onNavigate={goToDefinition}
-                      >
-                        Composite+market
                       </GlossaryTerm>
                     }
                   />
@@ -705,7 +760,6 @@ export default function App() {
                     <td>
                       <HorseLink name={h.horse_name} />
                     </td>
-                    <td className="mono">{fmtScore(h.composite_score)}</td>
                     <td className="mono">{fmtScore(h.composite_with_market)}</td>
                     <td className="mono">
                       {h.live_odds_str ?? "—"}
@@ -724,13 +778,13 @@ export default function App() {
       )}
 
       {tab === "exacta" && (
-        <ExoticSection data={scenarios.exacta} onNavigateDefinition={goToDefinition} />
+        <ExoticSection data={exactaLive} onNavigateDefinition={goToDefinition} />
       )}
       {tab === "trifecta" && (
-        <ExoticSection data={scenarios.trifecta} onNavigateDefinition={goToDefinition} />
+        <ExoticSection data={trifectaLive} onNavigateDefinition={goToDefinition} />
       )}
       {tab === "superfecta" && (
-        <ExoticSection data={scenarios.superfecta} onNavigateDefinition={goToDefinition} />
+        <ExoticSection data={superfectaLive} onNavigateDefinition={goToDefinition} />
       )}
 
       {tab === "definitions" && <DefinitionsTab />}
@@ -802,7 +856,7 @@ function ExoticSection({ data, onNavigateDefinition }) {
                     variant="icon-only"
                     name="Naive P"
                     defId="naive-p"
-                    summary="Rough chained probability for this exact finishing order from model scores—useful for comparing tickets, not for matching live pool odds."
+                    summary="Rough chained probability for this exact finishing order from the same composite as Rankings (optional market blend)—useful for comparing tickets, not for matching live pool odds."
                     onNavigate={onNavigateDefinition}
                   >
                     Naive P
