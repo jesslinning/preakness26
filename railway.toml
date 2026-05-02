@@ -12,6 +12,6 @@ builder = "nixpacks"
 # Requires root package.json + requirements.txt so Nixpacks installs Node (npm) and Python (pip).
 buildCommand = "pip install -r requirements.txt && npm run build"
 
-# Nixpacks also runs `npm start` when a root package.json exists; that script must exist (see package.json "start").
+# Prefer nixpacks.toml [start].cmd (python3 uvicorn). Fallback if using Railway UI start override:
 [deploy]
-startCommand = "PYTHONPATH=. python -m uvicorn app.odds_api:app --host 0.0.0.0 --port ${PORT:-8000}"
+startCommand = "sh -c 'PYTHONPATH=. exec python3 -m uvicorn app.odds_api:app --host 0.0.0.0 --port ${PORT:-8000}'"
