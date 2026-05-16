@@ -99,7 +99,7 @@ function buildOddsLookup(apiHorses) {
 /** @param {string | null | undefined} iso */
 function formatLiveOddsTimestamp(iso, tick) {
   void tick;
-  if (!iso) return { primary: "HRN article odds not loaded yet.", detail: "" };
+  if (!iso) return { primary: "Live odds not loaded yet.", detail: "" };
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return { primary: "Live odds time unavailable.", detail: "" };
   const abs = d.toLocaleString(undefined, {
@@ -113,7 +113,7 @@ function formatLiveOddsTimestamp(iso, tick) {
   else if (sec < 86400) rel = `${Math.floor(sec / 3600)}h ago`;
   else rel = `${Math.floor(sec / 86400)}d ago`;
   return {
-    primary: `HRN article odds as of ${abs} (${rel}).`,
+    primary: `Live odds as of ${abs} (${rel}).`,
     detail: `UTC equivalent: ${iso}`,
   };
 }
@@ -537,7 +537,7 @@ export default function App() {
                 <GlossaryTerm
                   name="Market blend"
                   defId="market-blend"
-                  summary="Step 1: blend HRN live odds into the core model score. 0% = models only; 100% = pool only."
+                  summary="Step 1: blend live odds into the core model score. 0% = models only; 100% = pool only."
                   onNavigate={goToDefinition}
                 >
                   Market blend (α)
@@ -836,7 +836,7 @@ export default function App() {
                         variant="icon-only"
                         name="Live odds"
                         defId="live-odds-col"
-                        summary="Fractional odds from the HRN Preakness article (matched by horse name). Sort uses implied win probability."
+                        summary="Fractional live odds matched by horse name. Sort uses implied win probability."
                         onNavigate={goToDefinition}
                       >
                         Live odds

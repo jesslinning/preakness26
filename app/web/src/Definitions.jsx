@@ -18,7 +18,7 @@ export function DefinitionsTab({ blendWeights, longshotBlendWeights }) {
         <p>
           Predictions combine <strong>six DataRobot average blends</strong>: three core strategies
           (finish position, top 3, top 5) and three longshot strategies. Rankings apply them in
-          nested steps—core composite first, then optional HRN live odds (
+          nested steps—core composite first, then optional live odds (
           <a href="#def-market-blend">α</a>), then longshot models (
           <a href="#def-upside-blend">β</a>). Each slider step replaces part of the previous
           result, not added on top.
@@ -143,7 +143,7 @@ export function DefinitionsTab({ blendWeights, longshotBlendWeights }) {
           </li>
           <li>
             <strong>Market step (α):</strong>{" "}
-            <strong>composite_with_market = (1 − α) × core + α × market strength</strong> when HRN
+            <strong>composite_with_market = (1 − α) × core + α × market strength</strong> when live
             odds match the horse.
           </li>
           <li>
@@ -193,7 +193,7 @@ export function DefinitionsTab({ blendWeights, longshotBlendWeights }) {
       <section className="card def-card" id="def-market-blend">
         <h2>Market blend (α)</h2>
         <p>
-          When the HRN Preakness odds article lists a horse by name, you can tilt the{" "}
+          When the live odds source lists a horse by name, you can tilt the{" "}
           <strong>core composite</strong> toward what the pool is doing. The slider sets{" "}
           <strong>α</strong> (alpha): each horse’s intermediate score becomes{" "}
           <strong>(1 − α) × core composite + α × market strength</strong>.{" "}
@@ -221,9 +221,21 @@ export function DefinitionsTab({ blendWeights, longshotBlendWeights }) {
       <section className="card def-card" id="def-live-odds-col">
         <h2>Live odds</h2>
         <p>
-          Pool-style <strong>fractional odds</strong> (for example 5/1) pulled from the
-          HRN Preakness Stakes article odds table and matched by horse name. Sorting uses
-          the <strong>implied win probability</strong> (for a/b odds, b ÷ (a + b)).
+          Pool-style <strong>fractional odds</strong> (for example 5/1) for the Preakness field,
+          matched to each horse by name. The app refreshes them from Horse Racing Nation’s
+          Preakness odds page:{" "}
+          <a
+            href="https://www.horseracingnation.com/news/Preakness_betting_odds_Great_White_among_favorites_early_123"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Preakness 2026: updated win odds from Laurel Park
+          </a>
+          . That page publishes a field table with current win odds (not a live tote feed).
+        </p>
+        <p>
+          Sorting the <strong>Live odds</strong> column uses the{" "}
+          <strong>implied win probability</strong> (for a/b odds, b ÷ (a + b)).
         </p>
       </section>
 
@@ -231,8 +243,8 @@ export function DefinitionsTab({ blendWeights, longshotBlendWeights }) {
         <h2>Market strength (live)</h2>
         <p>
           A 0–1 score from <strong>where the horse sits in the live implied-probability
-          ranking</strong> among entries on the odds page—short-priced horses score higher.
-          It is defined only when that page lists the horse.
+          ranking</strong> among entries on the live odds page—short-priced horses score higher.
+          It is defined only when the source lists the horse.
         </p>
       </section>
 
