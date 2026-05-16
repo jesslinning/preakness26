@@ -1,6 +1,6 @@
 /**
  * Browser port of app/scenarios.py _scenario_k / softmax chain for "composite" preset.
- * Scores come from enriched horses' composite_with_market (model + optional live pool blend).
+ * Scores come from enriched horses' composite_with_upside (nested model / market / longshot blend).
  */
 
 const MASK = -1e18;
@@ -62,7 +62,7 @@ const KEYS_BY_K = {
 };
 
 /**
- * @param {Array<{ horse_name: string, composite_with_market?: number }>} horsesEnriched
+ * @param {Array<{ horse_name: string, composite_with_upside?: number }>} horsesEnriched
  * @param {object} opts
  * @param {number} opts.k
  * @param {string} opts.betType
@@ -88,7 +88,7 @@ export function scenarioKFromHorses(horsesEnriched, opts) {
 
   const names = horsesEnriched.map((h) => h.horse_name);
   const scores = horsesEnriched.map((h) => {
-    const v = h.composite_with_market;
+    const v = h.composite_with_upside ?? h.composite_with_market;
     if (v == null || !Number.isFinite(Number(v))) return 0;
     return Number(v);
   });
@@ -133,7 +133,7 @@ export function scenarioKFromHorses(horsesEnriched, opts) {
 }
 
 /**
- * @param {Array<{ horse_name: string, composite_with_market?: number }>} horsesEnriched
+ * @param {Array<{ horse_name: string, composite_with_upside?: number }>} horsesEnriched
  * @param {"exacta"|"trifecta"|"superfecta"} kind
  * @param {object|null} staticPayload — scenarios.json fragment (top_n, cost_per_ticket, preset, bet_type)
  */

@@ -1,0 +1,34 @@
+{
+  "target": "target_FP",
+  "blend_model_id": "6a089b4452675f00f34061d2",
+  "blend_model_label": "Average Blend (top 5 CV)",
+  "blend_model_type": "AVG Blender",
+  "prediction_path": "/Users/colbymiller/Documents/Jess Projects/Preakness/preakness26/data prep/data/predictions/predictions_target_FP.csv",
+  "child_models": [
+    {
+      "model_id": "6a08953a3beb2bc146e69c1e",
+      "model_label": "eXtreme Gradient Boosted Trees Regressor with Unsupervised Learning Features",
+      "cv_score": 1.9464819999999996
+    },
+    {
+      "model_id": "6a08796d90fbd67202244ee0",
+      "model_label": "eXtreme Gradient Boosted Trees Regressor with Unsupervised Learning Features",
+      "cv_score": 1.9995180000000001
+    },
+    {
+      "model_id": "6a0894238d07601da9ca7152",
+      "model_label": "eXtreme Gradient Boosted Trees Regressor with Unsupervised Learning Features",
+      "cv_score": 2.0355220000000003
+    },
+    {
+      "model_id": "6a08796e90fbd67202244f0b",
+      "model_label": "eXtreme Gradient Boosted Trees Regressor",
+      "cv_score": 2.099434
+    },
+    {
+      "model_id": "6a08796e90fbd67202244f08",
+      "model_label": "eXtreme Gradient Boosted Trees Regressor (learning rate =0.01)",
+      "cv_score": 2.113492
+    }
+  ]
+}

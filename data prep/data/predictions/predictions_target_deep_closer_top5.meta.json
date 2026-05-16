@@ -1,0 +1,34 @@
+{
+  "target": "target_deep_closer_top5",
+  "blend_model_id": "6a089dd811b336943123e040",
+  "blend_model_label": "Average Blend (top 5 CV)",
+  "blend_model_type": "AVG Blender",
+  "prediction_path": "/Users/colbymiller/Documents/Jess Projects/Preakness/preakness26/data prep/data/predictions/predictions_target_deep_closer_top5.csv",
+  "child_models": [
+    {
+      "model_id": "6a0897517a8225bd965b5c60",
+      "model_label": "eXtreme Gradient Boosted Trees Classifier with Early Stopping - Forest (10x)",
+      "cv_score": 0.349908
+    },
+    {
+      "model_id": "6a0896fcb2487f6967634bbb",
+      "model_label": "eXtreme Gradient Boosted Trees Classifier with Early Stopping - Forest (10x)",
+      "cv_score": 0.351722
+    },
+    {
+      "model_id": "6a0896114683b6a8660a4b33",
+      "model_label": "eXtreme Gradient Boosted Trees Classifier with Early Stopping - Forest (10x)",
+      "cv_score": 0.375528
+    },
+    {
+      "model_id": "6a08797e7d5474274322a285",
+      "model_label": "eXtreme Gradient Boosted Trees Classifier with Early Stopping - Forest (10x)",
+      "cv_score": 0.38524600000000003
+    },
+    {
+      "model_id": "6a08797c7d5474274322a259",
+      "model_label": "RandomForest Classifier (Entropy)",
+      "cv_score": 0.398612
+    }
+  ]
+}

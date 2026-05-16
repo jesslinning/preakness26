@@ -27,7 +27,7 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from starlette.staticfiles import StaticFiles
 
-from app.live_odds import LIVE_ODDS_URL, fetch_and_parse_derby_odds
+from app.live_odds import LIVE_ODDS_URL, fetch_and_parse_preakness_odds
 
 logger = logging.getLogger("odds_api")
 
@@ -52,7 +52,7 @@ _lock = asyncio.Lock()
 async def _fetch_and_store_unlocked() -> None:
     global _cache, _cache_error
     try:
-        result = await fetch_and_parse_derby_odds()
+        result = await fetch_and_parse_preakness_odds()
         _cache = {
             "fetched_at": result.fetched_at_iso,
             "source_url": result.source_url,
@@ -108,7 +108,7 @@ async def _lifespan(app: FastAPI):
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="Kentucky Derby live odds", version="0.1.0", lifespan=_lifespan)
+    app = FastAPI(title="Preakness Stakes live odds", version="0.1.0", lifespan=_lifespan)
 
     @app.get("/api/health")
     async def health() -> dict[str, str]:

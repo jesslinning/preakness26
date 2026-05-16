@@ -1,17 +1,22 @@
 :root {
-  /* Kentucky Derby–adjacent: muted gold + deep rose (official site family, not bright yellow) */
-  --derby-red: #9d2235;
-  --derby-red-hover: #b02d42;
-  --gold: #c5a059;
-  --gold-soft: #d4bc7f;
-  --gold-dim: rgba(197, 160, 89, 0.22);
-  --gold-dim-strong: rgba(197, 160, 89, 0.35);
+  /* Preakness 151 — forest green + cream + gold (preakness.com) */
+  --preakness-green: #004225;
+  --preakness-green-mid: #0a5234;
+  --preakness-green-deep: #00331c;
+  --preakness-cream: #fdf5e6;
+  --preakness-cream-dark: #f0e6d4;
+  --preakness-accent: var(--preakness-green);
+  --preakness-accent-hover: #0a5234;
+  --gold: #c5b358;
+  --gold-soft: #d9c878;
+  --gold-dim: rgba(197, 179, 88, 0.22);
+  --gold-dim-strong: rgba(197, 179, 88, 0.4);
 
-  --bg: #f7f5f2;
-  --surface: #ffffff;
-  --border: #e8e4dc;
-  --text: #1c1917;
-  --muted: #57534e;
+  --bg: var(--preakness-cream);
+  --surface: #fffefb;
+  --border: #d4cbb8;
+  --text: #0a2e1c;
+  --muted: #3d5347;
 
   --accent: var(--gold);
   --accent-dim: var(--gold-dim);
@@ -20,8 +25,10 @@
   --tag-top3-bg: rgba(29, 107, 82, 0.12);
   --tag-top5: #4a6fa5;
   --tag-top5-bg: rgba(74, 111, 165, 0.12);
-  --tag-fp: #9d2235;
-  --tag-fp-bg: rgba(157, 34, 53, 0.1);
+  --tag-fp: #104e8b;
+  --tag-fp-bg: rgba(16, 78, 139, 0.12);
+  --tag-longshot: #7a5c00;
+  --tag-longshot-bg: rgba(212, 160, 23, 0.15);
 
   font-family: "Instrument Sans", system-ui, sans-serif;
   color: var(--text);
@@ -59,14 +66,14 @@ body {
 .horse-link {
   color: inherit;
   text-decoration: underline;
-  text-decoration-color: rgba(157, 34, 53, 0.35);
+  text-decoration-color: rgba(0, 66, 37, 0.35);
   text-underline-offset: 0.12em;
 }
 
 .horse-link:hover,
 .horse-link:focus-visible {
-  color: var(--derby-red);
-  text-decoration-color: var(--derby-red);
+  color: var(--preakness-accent);
+  text-decoration-color: var(--preakness-accent);
 }
 
 .horse-link__sr {
@@ -95,13 +102,160 @@ body {
 
 .hero {
   margin-bottom: 1.75rem;
+  padding: 1.75rem 1.5rem 1.35rem;
+  background: linear-gradient(
+    160deg,
+    var(--preakness-green-deep) 0%,
+    var(--preakness-green) 45%,
+    var(--preakness-green-mid) 100%
+  );
+  border-radius: 4px;
+  border: 1px solid rgba(197, 179, 88, 0.35);
+  color: var(--preakness-cream);
+}
+
+.hero h1 {
+  color: var(--preakness-cream);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.hero .eyebrow {
+  color: var(--gold-soft);
+  letter-spacing: 0.14em;
+}
+
+.hero .lede {
+  color: rgba(253, 245, 230, 0.92);
+  max-width: 42ch;
+  margin-bottom: 1.25rem;
+}
+
+.hero .glossary-mobile-hint {
+  color: rgba(253, 245, 230, 0.72);
+  margin-top: 1rem;
+  margin-bottom: 0;
+}
+
+.blend-panel {
+  margin-top: 0.25rem;
+  padding: 1rem 1.15rem 1.1rem;
+  background: var(--preakness-cream);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  width: 100%;
+}
+
+.blend-formula {
+  margin: 0 0 0.85rem;
+  font-size: 0.82rem;
+  color: var(--preakness-green);
+  text-align: left;
+}
+
+.live-odds-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.65rem 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.live-odds-row .live-odds-bar__status {
+  margin: 0;
+  flex: 1 1 12rem;
+}
+
+.blend-sliders {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.85rem;
+  width: 100%;
+}
+
+.hero .blend-sliders .live-odds-bar__slider {
+  width: 100%;
+  max-width: none;
+  align-items: stretch;
+  text-align: left;
+}
+
+.hero .blend-sliders .live-odds-bar__slider-label {
+  justify-content: flex-start;
+  color: var(--text);
+}
+
+.hero .blend-sliders input[type="range"] {
+  width: 100%;
+  max-width: none;
+}
+
+.hero .live-odds-bar__percent-input {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.hero .live-odds-bar__refresh {
+  flex-shrink: 0;
+  border-color: var(--preakness-green);
+  color: var(--preakness-green);
+  background: var(--surface);
+}
+
+.hero .live-odds-bar__refresh:hover:not(:disabled) {
+  background: var(--preakness-green);
+  color: var(--preakness-cream);
+  border-color: var(--preakness-green);
+}
+
+.hero .live-odds-bar__warn {
+  color: #8b4513;
+}
+
+.models-group {
+  margin-bottom: 1.5rem;
+}
+
+.models-group h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+}
+
+.models-strategy-row td {
+  vertical-align: top;
+}
+
+.models-child td {
+  font-size: 0.88rem;
+}
+
+.divergence-badge {
+  display: inline-block;
+  margin-left: 0.35rem;
+  padding: 0.1rem 0.4rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-radius: 4px;
+  background: var(--tag-longshot-bg);
+  color: var(--tag-longshot);
+  vertical-align: middle;
+}
+
+.longshots-filter {
+  margin: 0 0 1rem;
 }
 
 .eyebrow {
   text-transform: uppercase;
   letter-spacing: 0.12em;
   font-size: 0.72rem;
-  color: var(--derby-red);
+  color: var(--preakness-accent);
   margin: 0 0 0.5rem;
   font-weight: 600;
 }
@@ -148,8 +302,7 @@ h1 {
   padding: 0.75rem 1rem;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 10px;
-  max-width: min(100%, 58ch);
+  border-radius: 4px;
 }
 
 .live-odds-bar__status {
@@ -162,7 +315,7 @@ h1 {
 .live-odds-bar__warn {
   margin: 0 0 0.5rem;
   font-size: 0.82rem;
-  color: var(--derby-red);
+  color: var(--preakness-accent);
 }
 
 .live-odds-bar__controls {
@@ -225,8 +378,7 @@ h1 {
 
 .live-odds-bar__slider input[type="range"] {
   width: 100%;
-  max-width: 220px;
-  accent-color: var(--gold);
+  accent-color: var(--preakness-green);
 }
 
 .live-odds-bar__refresh {
@@ -572,7 +724,7 @@ h1 {
 }
 
 .tabs-nav__select:focus-visible {
-  border-color: var(--derby-red);
+  border-color: var(--preakness-accent);
   box-shadow: 0 0 0 3px rgba(157, 34, 53, 0.2);
 }
 
@@ -658,15 +810,15 @@ h1 {
 }
 
 .tab:hover {
-  color: var(--derby-red);
+  color: var(--preakness-accent);
   border-color: rgba(157, 34, 53, 0.35);
   background: rgba(157, 34, 53, 0.04);
 }
 
 .tab.active {
   color: #ffffff;
-  background: var(--derby-red);
-  border-color: var(--derby-red);
+  background: var(--preakness-accent);
+  border-color: var(--preakness-accent);
   font-weight: 600;
 }
 
@@ -911,6 +1063,30 @@ h1 {
   color: var(--tag-top5);
 }
 
+.tag-core {
+  background: rgba(16, 78, 139, 0.12);
+  color: var(--preakness-accent);
+}
+
+.tag-longshot {
+  background: var(--tag-longshot-bg);
+  color: var(--tag-longshot);
+}
+
+.models-expand-btn {
+  font-size: 0.82rem;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--preakness-accent);
+  cursor: pointer;
+}
+
+.models-expand-btn:hover {
+  border-color: var(--preakness-accent);
+}
+
 .loading {
   text-align: center;
   padding: 4rem;
@@ -952,6 +1128,23 @@ h1 {
 
 .def-list li {
   margin-bottom: 0.35rem;
+}
+
+.def-subhead {
+  margin: 1rem 0 0.35rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--preakness-green);
+  font-family: "Libre Baskerville", Georgia, serif;
+}
+
+.glossary--weights dt {
+  margin-top: 0.5rem;
+}
+
+.glossary--weights dd {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.88rem;
 }
 
 .def-card--compact .glossary {
@@ -1106,7 +1299,7 @@ h1 {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--derby-red);
+  color: var(--preakness-accent);
 }
 
 .glossary-term__summary {
@@ -1131,7 +1324,7 @@ h1 {
   font: inherit;
   font-weight: 600;
   color: #ffffff;
-  background: var(--derby-red);
+  background: var(--preakness-accent);
   border: none;
   border-radius: 10px;
   cursor: pointer;
@@ -1139,7 +1332,7 @@ h1 {
 }
 
 .glossary-term__primary:hover {
-  background: var(--derby-red-hover);
+  background: var(--preakness-accent-hover);
 }
 
 .glossary-term__ghost {
@@ -1222,7 +1415,7 @@ h1 {
 
 .th-ranking__chev--active {
   opacity: 1;
-  color: var(--derby-red);
+  color: var(--preakness-accent);
 }
 
 .glossary-term--icon-only {

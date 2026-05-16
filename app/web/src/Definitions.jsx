@@ -2,9 +2,57 @@
  * In-app glossary — casual explanations for race fans (no raw data file jargon).
  * Section ids keep prefix `def-` for deep links from column headers.
  */
-export function DefinitionsTab() {
+function fmtWeight(v) {
+  if (v == null || Number.isNaN(Number(v))) return "—";
+  return Number(v).toFixed(2);
+}
+
+export function DefinitionsTab({ blendWeights, longshotBlendWeights }) {
+  const w = blendWeights ?? {};
+  const lw = longshotBlendWeights ?? {};
+
   return (
     <div className="definitions">
+      <section className="card def-card" id="def-modeling-overview">
+        <h2>Blended modeling strategies</h2>
+        <p>
+          Predictions combine <strong>six DataRobot average blends</strong>: three core strategies
+          (finish position, top 3, top 5) and three longshot strategies. Rankings apply them in
+          nested steps—core composite first, then optional HRN live odds (
+          <a href="#def-market-blend">α</a>), then longshot models (
+          <a href="#def-upside-blend">β</a>). Each slider step replaces part of the previous
+          result, not added on top.
+        </p>
+      </section>
+
+      <section className="card def-card" id="def-blend-weights">
+        <h2>Blend weights</h2>
+        <p>
+          Fixed weights from the prediction bundle (from your current data file):
+        </p>
+        <h3 className="def-subhead">Core composite</h3>
+        <dl className="glossary glossary--weights">
+          <dt>Top 3 (ensemble_top3)</dt>
+          <dd>{fmtWeight(w.ensemble_top3)}</dd>
+          <dt>Top 5 (ensemble_top5)</dt>
+          <dd>{fmtWeight(w.ensemble_top5)}</dd>
+          <dt>Finish position (fp_strength)</dt>
+          <dd>{fmtWeight(w.fp_strength)}</dd>
+        </dl>
+        <h3 className="def-subhead">Longshot index</h3>
+        <dl className="glossary glossary--weights">
+          <dt>ML beat (ml_beat_strength)</dt>
+          <dd>{fmtWeight(lw.ml_beat_strength)}</dd>
+          <dt>Top 5 strict (longshot_top5_strict)</dt>
+          <dd>{fmtWeight(lw.longshot_top5_strict)}</dd>
+          <dt>Top 5 broad (longshot_top5_broad)</dt>
+          <dd>{fmtWeight(lw.longshot_top5_broad)}</dd>
+        </dl>
+        <p className="muted fine-print">
+          See the <strong>Models</strong> tab for each strategy’s five child models in the blender.
+        </p>
+      </section>
+
       <section className="card def-card" id="def-horse">
         <h2>Horse</h2>
         <p>
@@ -20,7 +68,7 @@ export function DefinitionsTab() {
           single scale. Under the hood it mixes three ideas: how likely the horse is to finish
           in the Top 3, how likely in the Top 5, and how strongly the finish-position models
           like the horse. This is a <em>rough</em> ranking tool—not a precise “chance to win
-          the Derby” number.
+          the Preakness” number.
         </p>
         <p>
           Those three pieces are blended using fixed <strong>weights</strong> (by default: half
@@ -30,12 +78,9 @@ export function DefinitionsTab() {
           out everything else.
         </p>
         <p>
-          When <strong>live pool odds</strong> are matched to a horse, the same column can
-          further mix in <strong>market strength</strong> (see <a href="#def-market-blend">Market
-          blend (α)</a>): <strong>(1 − α) ×</strong> that model blend <strong>+ α ×</strong> market
-          strength. If no odds match, the score stays model-only. Exacta, trifecta, and superfecta
-          naive probabilities use this same composite so they move with the slider when odds are
-          loaded.
+          This is the <strong>core model score</strong> before live odds or longshot blends.
+          Rankings and Exotics use the nested <strong>blended score</strong> after α and β
+          (see <a href="#def-composite-with-upside">Blended score</a>).
         </p>
         <p>
           If those weights were changed, the order of horses would change too—you would still
@@ -86,16 +131,75 @@ export function DefinitionsTab() {
         </p>
       </section>
 
+      <section className="card def-card" id="def-composite-with-upside">
+        <h2>Blended score (displayed)</h2>
+        <p>
+          The number you sort on in <strong>Rankings</strong> after both header sliders. It is built
+          in two nested steps—not three parallel weights:
+        </p>
+        <ol className="def-list">
+          <li>
+            <strong>Core composite</strong> (Top 3 / Top 5 / FP blend from this card).
+          </li>
+          <li>
+            <strong>Market step (α):</strong>{" "}
+            <strong>composite_with_market = (1 − α) × core + α × market strength</strong> when HRN
+            odds match the horse.
+          </li>
+          <li>
+            <strong>Upside step (β):</strong>{" "}
+            <strong>blended = (1 − β) × composite_with_market + β × longshot_index</strong>.
+          </li>
+        </ol>
+        <p>
+          At <strong>β = 100%</strong>, rankings use longshot models only and α is ignored. Exacta,
+          trifecta, and superfecta naive probabilities use this same blended score.
+        </p>
+      </section>
+
+      <section className="card def-card" id="def-longshot-index">
+        <h2>Longshot index</h2>
+        <p>
+          A single 0–1 score per horse from three longshot blend strategies: how much the horse
+          beats its morning-line rank, strict longshot top-5 probability, and a broader longshot
+          top-5 signal. Weights default to 50% / 30% / 20% (see{" "}
+          <a href="#def-blend-weights">Blend weights</a>).
+        </p>
+        <p>
+          The <strong>Longshots</strong> tab sorts by this index. The <strong>Upside blend (β)</strong>{" "}
+          slider folds it into the main Rankings blended score.
+        </p>
+      </section>
+
+      <section className="card def-card" id="def-upside-blend">
+        <h2>Upside blend (β)</h2>
+        <p>
+          Step 2 after market blend: tilts the displayed score toward{" "}
+          <a href="#def-longshot-index">longshot index</a>. Formula:{" "}
+          <strong>(1 − β) × composite_with_market + β × longshot_index</strong>. At 0% you ignore
+          longshots; at 100% you use longshots only and α does not apply.
+        </p>
+      </section>
+
+      <section className="card def-card" id="def-upside-gap">
+        <h2>Upside gap</h2>
+        <p>
+          <strong>Longshot index − live market strength</strong> when both exist. Positive means the
+          longshot models like the horse more than the betting pool’s implied ranking—a possible
+          value angle (not a guarantee).
+        </p>
+      </section>
+
       <section className="card def-card" id="def-market-blend">
         <h2>Market blend (α)</h2>
         <p>
-          When the live odds feed lists a horse by name, you can tilt the{" "}
-          <a href="#def-composite-score">Composite score</a> toward what the betting pool is
-          doing. The slider sets <strong>α</strong> (alpha): each horse’s composite becomes{" "}
-          <strong>(1 − α) × model composite + α × market strength</strong>. Here{" "}
-          <strong>model composite</strong> is the blended Top 3 / Top 5 / FP score from the CSV
-          models alone; <strong>market strength</strong> is a 0–1 rank among horses that appear
-          on the odds page (see <a href="#def-market-strength-live">Market strength (live)</a>).
+          When the HRN Preakness odds article lists a horse by name, you can tilt the{" "}
+          <strong>core composite</strong> toward what the pool is doing. The slider sets{" "}
+          <strong>α</strong> (alpha): each horse’s intermediate score becomes{" "}
+          <strong>(1 − α) × core composite + α × market strength</strong>.{" "}
+          <strong>Market strength</strong> is a 0–1 rank among horses on that page (see{" "}
+          <a href="#def-market-strength-live">Market strength (live)</a>). Then β may blend in
+          longshots (see <a href="#def-upside-blend">Upside blend (β)</a>).
         </p>
         <p>
           If a runner <strong>does not</strong> appear on the live odds page, there is no market
@@ -118,7 +222,7 @@ export function DefinitionsTab() {
         <h2>Live odds</h2>
         <p>
           Pool-style <strong>fractional odds</strong> (for example 5/1) pulled from the
-          Kentucky Derby live odds widget and matched by horse name. Sorting this column uses
+          HRN Preakness Stakes article odds table and matched by horse name. Sorting uses
           the <strong>implied win probability</strong> (for a/b odds, b ÷ (a + b)).
         </p>
       </section>
@@ -155,8 +259,8 @@ export function DefinitionsTab() {
           builds a <em>rough</em> storybook probability by repeating a simple pattern:
         </p>
         <ol className="def-list">
-          <li>Pick 1st using a softmax over the <strong>whole</strong> field (scores = Composite,
-            including optional market blend when live odds match).</li>
+          <li>Pick 1st using a softmax over the <strong>whole</strong> field (scores = blended score,
+            including α and β when set).</li>
           <li>Remove that horse, then pick 2nd from the <strong>remaining</strong> horses with
             the same style of split.</li>
           <li>Do the same for 3rd and 4th when you are looking at tris and supers.</li>
@@ -196,11 +300,6 @@ export function DefinitionsTab() {
       <section className="card def-card def-card--compact">
         <h2>More terms (short glossary)</h2>
         <dl className="glossary">
-          <dt>Blend weights</dt>
-          <dd>How much the overall score leans on Top 3 chance, Top 5 chance, and finish
-            strength. If the three weights add up to 1, you can read the composite as a
-            straight combination of those three ideas (each scaled so higher = better).</dd>
-
           <dt>Rankings tab</dt>
           <dd>Full prediction table for the field: one composite score (model blend plus optional
             live market mix) and the building blocks. Tap a column header to sort by that number

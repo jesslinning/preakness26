@@ -1,0 +1,34 @@
+{
+  "target": "target_top5_ml_rank_gt4",
+  "blend_model_id": "6a089d6711b336943123dfa9",
+  "blend_model_label": "Average Blend (top 5 CV)",
+  "blend_model_type": "AVG Blender",
+  "prediction_path": "/Users/colbymiller/Documents/Jess Projects/Preakness/preakness26/data prep/data/predictions/predictions_target_top5_ml_rank_gt4.csv",
+  "child_models": [
+    {
+      "model_id": "6a08957f8fcb758aa2fe0241",
+      "model_label": "eXtreme Gradient Boosted Trees Classifier with Early Stopping - Forest (10x)",
+      "cv_score": 0.21905200000000002
+    },
+    {
+      "model_id": "6a089695226559ef41372c69",
+      "model_label": "eXtreme Gradient Boosted Trees Classifier with Early Stopping - Forest (10x)",
+      "cv_score": 0.22240599999999996
+    },
+    {
+      "model_id": "6a08963e7523b207dfeddeae",
+      "model_label": "eXtreme Gradient Boosted Trees Classifier with Early Stopping - Forest (10x)",
+      "cv_score": 0.258914
+    },
+    {
+      "model_id": "6a08797a84a73bb2dfcaa275",
+      "model_label": "eXtreme Gradient Boosted Trees Classifier with Early Stopping - Forest (10x)",
+      "cv_score": 0.26947400000000005
+    },
+    {
+      "model_id": "6a08797884a73bb2dfcaa22b",
+      "model_label": "Decision Tree Classifier (Gini)",
+      "cv_score": 0.286582
+    }
+  ]
+}

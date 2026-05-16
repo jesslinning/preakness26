@@ -1,0 +1,34 @@
+{
+  "target": "target_ml_rank_minus_finish",
+  "blend_model_id": "6a089ccb11b336943123def8",
+  "blend_model_label": "Average Blend (top 5 CV)",
+  "blend_model_type": "AVG Blender",
+  "prediction_path": "/Users/colbymiller/Documents/Jess Projects/Preakness/preakness26/data prep/data/predictions/predictions_target_ml_rank_minus_finish.csv",
+  "child_models": [
+    {
+      "model_id": "6a08964fd1d713ecdcd3a1aa",
+      "model_label": "eXtreme Gradient Boosted Trees Regressor (learning rate =0.01)",
+      "cv_score": 2.0185959999999996
+    },
+    {
+      "model_id": "6a0896dfb57abbf4555c4df8",
+      "model_label": "eXtreme Gradient Boosted Trees Regressor (learning rate =0.01)",
+      "cv_score": 2.051328
+    },
+    {
+      "model_id": "6a08797419fcb6e9f11acc37",
+      "model_label": "eXtreme Gradient Boosted Trees Regressor (learning rate =0.01)",
+      "cv_score": 2.082234
+    },
+    {
+      "model_id": "6a089576a2f651ca3ef2e890",
+      "model_label": "eXtreme Gradient Boosted Trees Regressor (learning rate =0.01)",
+      "cv_score": 2.100984
+    },
+    {
+      "model_id": "6a08797219fcb6e9f11acbf3",
+      "model_label": "RandomForest Regressor",
+      "cv_score": 2.1076159999999997
+    }
+  ]
+}

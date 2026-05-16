@@ -19,6 +19,10 @@ Per-race standardization and ranks: ``add_field_relative_features``,
 
 Kentucky Derby rows: ``select_kentucky_derby`` (uses Brisnet ``KyDerby`` class code,
 not a bare ``"DERBY"`` substring).
+
+Preakness Stakes rows: ``select_preakness_stakes`` (Pimlico ``PIM`` or stakes-product
+``PRK``, plus Brisnet ``Preaknes-G1`` classification — note the shortened ``Preaknes``
+spelling). Use ``normalize_pimlico_track_codes`` so prediction rows match training.
 """
 
 from __future__ import annotations
@@ -119,6 +123,14 @@ FIELD_RELATIVE_GROUP_KEYS: tuple[str, ...] = ("track", "date", "race")
 # Rank 1 = smallest assigned weight (lighter burden); other columns default to rank 1 = largest value.
 _RANK_LOWER_VALUE_IS_BETTER: frozenset[str] = frozenset({"weight"})
 
+PIMLICO_TRACK_CODE = "PIM"
+"""Brisnet track code on full Pimlico cards (e.g. ``PIM0517-2025.DRF``)."""
+
+BRISNET_PREAKNESS_STAKES_PRODUCT_TRACK = "PRK"
+"""Brisnet track code on the stakes-only Preakness product (e.g. ``PRK0516-2026.DRF``)."""
+
+PIMLICO_TRACK_ALIASES = frozenset({PIMLICO_TRACK_CODE, BRISNET_PREAKNESS_STAKES_PRODUCT_TRACK})
+
 __all__ = [
     "FIELD_RELATIVE_GROUP_KEYS",
     "FIELD_RELATIVE_NUMERIC_COLUMNS",
@@ -127,7 +139,33 @@ __all__ = [
     "morning_line_implied_probability",
     "past_performances_long",
     "select_kentucky_derby",
+    "normalize_pimlico_track_codes",
+    "select_preakness_stakes",
+    "select_sir_barton_stakes",
+    "select_preakness_training_stakes",
+    "PIMLICO_TRACK_CODE",
+    "BRISNET_PREAKNESS_STAKES_PRODUCT_TRACK",
 ]
+
+
+def _pimlico_track_mask(track: pd.Series, track_code: str = PIMLICO_TRACK_CODE) -> pd.Series:
+    """Match Pimlico rows; default *track_code* accepts full-card ``PIM`` and stakes ``PRK``."""
+    tc = track_code.strip()
+    t = track.astype(str).str.strip()
+    if tc == PIMLICO_TRACK_CODE:
+        return t.isin(PIMLICO_TRACK_ALIASES)
+    return t == tc
+
+
+def normalize_pimlico_track_codes(df: pd.DataFrame) -> pd.DataFrame:
+    """Map stakes-product ``PRK`` to ``PIM`` so prediction rows align with training cards."""
+    if "track" not in df.columns:
+        return df
+    out = df.copy()
+    prk = out["track"].astype(str).str.strip() == BRISNET_PREAKNESS_STAKES_PRODUCT_TRACK
+    if prk.any():
+        out.loc[prk, "track"] = PIMLICO_TRACK_CODE
+    return out
 
 
 def load_drf(path: str | Path) -> pd.DataFrame:
@@ -203,6 +241,132 @@ def select_kentucky_derby(
             "Expected a single KyDerby race number in this file; found "
             f"{n}: {sorted(out['race'].dropna().unique().tolist())!r}"
         )
+    return out
+
+
+def select_preakness_stakes(
+    df: pd.DataFrame,
+    *,
+    track_code: str = "PIM",
+    require_unique_race: bool = True,
+) -> pd.DataFrame:
+    """Return rows for the Preakness Stakes from a loaded DRF frame.
+
+    Filters to ``track`` matching *track_code* (default Pimlico ``PIM``) and
+    ``todays_race_classification`` containing ``Preaknes`` (Brisnet uses
+    ``Preaknes-G1``, not the full word ``Preakness``).
+
+    Race number varies by year (e.g. 2020); do not rely on a fixed ``race`` alone.
+    """
+    need = ("track", "todays_race_classification", "race")
+    missing = [c for c in need if c not in df.columns]
+    if missing:
+        raise KeyError(f"DataFrame missing required columns: {missing}")
+
+    pim = _pimlico_track_mask(df["track"], track_code)
+    prk = df["todays_race_classification"].str.contains("Preaknes", na=False)
+    out = df.loc[pim & prk].copy()
+
+    if not require_unique_race:
+        return out
+
+    n = out["race"].nunique()
+    if n == 0:
+        raise ValueError(
+            f"No Preakness Stakes (Preaknes classification) rows for track {track_code!r}."
+        )
+    if n > 1:
+        raise ValueError(
+            "Expected a single Preaknes race number in this file; found "
+            f"{n}: {sorted(out['race'].dropna().unique().tolist())!r}"
+        )
+    return out
+
+
+def select_sir_barton_stakes(
+    df: pd.DataFrame,
+    *,
+    track_code: str = "PIM",
+    require_unique_race: bool = True,
+) -> pd.DataFrame:
+    """Return rows for the Sir Barton Stakes from a loaded DRF frame.
+
+    Filters to ``track`` matching *track_code* (default Pimlico ``PIM``) and
+    ``todays_race_classification`` containing ``SirBarton`` (e.g. ``SirBartonB100k``).
+    """
+    need = ("track", "todays_race_classification", "race")
+    missing = [c for c in need if c not in df.columns]
+    if missing:
+        raise KeyError(f"DataFrame missing required columns: {missing}")
+
+    pim = _pimlico_track_mask(df["track"], track_code)
+    sb = df["todays_race_classification"].str.contains("SirBarton", na=False)
+    out = df.loc[pim & sb].copy()
+
+    if not require_unique_race:
+        return out
+
+    n = out["race"].nunique()
+    if n == 0:
+        raise ValueError(
+            f"No Sir Barton Stakes (SirBarton classification) rows for track {track_code!r}."
+        )
+    if n > 1:
+        raise ValueError(
+            "Expected a single SirBarton race number in this file; found "
+            f"{n}: {sorted(out['race'].dropna().unique().tolist())!r}"
+        )
+    return out
+
+
+def select_g1_dirt_stakes(
+    df: pd.DataFrame,
+    *,
+    track_code: str = "PIM",
+    require_unique_race: bool = True,
+) -> pd.DataFrame:
+    """Return rows for the UAE President's Cup G1 dirt race (``UAEPrsCp-G1``) when on the card."""
+    need = ("track", "todays_race_classification", "race")
+    missing = [c for c in need if c not in df.columns]
+    if missing:
+        raise KeyError(f"DataFrame missing required columns: {missing}")
+
+    pim = _pimlico_track_mask(df["track"], track_code)
+    g1 = df["todays_race_classification"].str.contains("UAEPrsCp", na=False)
+    out = df.loc[pim & g1].copy()
+
+    if not require_unique_race:
+        return out
+
+    n = out["race"].nunique()
+    if n == 0:
+        raise ValueError(
+            f"No UAE President's Cup (UAEPrsCp classification) rows for track {track_code!r}."
+        )
+    if n > 1:
+        raise ValueError(
+            "Expected a single UAEPrsCp race number in this file; found "
+            f"{n}: {sorted(out['race'].dropna().unique().tolist())!r}"
+        )
+    return out
+
+
+def select_preakness_training_stakes(
+    df: pd.DataFrame,
+    *,
+    track_code: str = "PIM",
+    include_g1_dirt: bool = False,
+) -> pd.DataFrame:
+    """Preakness and Sir Barton rows; optional G1 dirt (UAEPrsCp) when labeled in ``.RES``."""
+    prk = select_preakness_stakes(df, track_code=track_code, require_unique_race=False)
+    sbt = select_sir_barton_stakes(df, track_code=track_code, require_unique_race=False)
+    parts = [prk, sbt]
+    if include_g1_dirt:
+        g1 = select_g1_dirt_stakes(df, track_code=track_code, require_unique_race=False)
+        parts.append(g1)
+    out = pd.concat(parts, ignore_index=True)
+    if out.empty:
+        raise ValueError(f"No Preakness-week training stake rows for track {track_code!r}.")
     return out
 
 

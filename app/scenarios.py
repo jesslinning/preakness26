@@ -13,12 +13,20 @@ from typing import Any, Literal
 import numpy as np
 import pandas as pd
 
-RankingPreset = Literal["composite", "ensemble_top3", "ensemble_top5", "fp_strength"]
+RankingPreset = Literal[
+    "composite",
+    "longshot_index",
+    "ensemble_top3",
+    "ensemble_top5",
+    "fp_strength",
+]
 
 
 def _scores_for_preset(df: pd.DataFrame, preset: RankingPreset) -> pd.Series:
     if preset == "composite":
         return df["composite_score"]
+    if preset == "longshot_index":
+        return df["longshot_index"]
     if preset == "ensemble_top3":
         return df["ensemble_top3"]
     if preset == "ensemble_top5":
@@ -31,6 +39,7 @@ def _scores_for_preset(df: pd.DataFrame, preset: RankingPreset) -> pd.Series:
 def _score_column(preset: RankingPreset) -> str:
     return {
         "composite": "composite_score",
+        "longshot_index": "longshot_index",
         "ensemble_top3": "ensemble_top3",
         "ensemble_top5": "ensemble_top5",
         "fp_strength": "fp_strength",

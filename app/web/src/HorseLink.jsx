@@ -1,7 +1,7 @@
-import { getKentuckyDerbyHorseUrl } from "./kentuckyDerbyHorseUrls.js";
+import { getPreaknessHorseUrl } from "./preaknessHorseUrls.js";
 
 export function HorseLink({ name, className }) {
-  const url = getKentuckyDerbyHorseUrl(name);
+  const url = getPreaknessHorseUrl(name);
   const combined = [className, "horse-link"].filter(Boolean).join(" ");
 
   if (!url) {
@@ -16,7 +16,7 @@ export function HorseLink({ name, className }) {
       className={combined}
     >
       {name}
-      <span className="horse-link__sr"> (Kentucky Derby profile, opens in new tab)</span>
+      <span className="horse-link__sr"> (Horse Racing Nation profile, opens in new tab)</span>
     </a>
   );
 }

@@ -46,7 +46,7 @@ logger = logging.getLogger("app.cli")
 
 
 def main(argv: list[str] | None = None) -> int:
-    p = argparse.ArgumentParser(description="Combine Derby prediction CSVs and build scenarios.")
+    p = argparse.ArgumentParser(description="Combine Preakness blend prediction CSVs and build scenarios.")
     p.add_argument(
         "--predictions-dir",
         type=Path,
@@ -97,8 +97,10 @@ def main(argv: list[str] | None = None) -> int:
     wide = bundle.wide
     scenarios_payload = {
         "blend_weights": bundle.blend_weights,
+        "longshot_blend_weights": bundle.longshot_blend_weights,
         "rankings": {
             "composite": ranking_table(wide, "composite"),
+            "longshot_index": ranking_table(wide, "longshot_index"),
             "ensemble_top3": ranking_table(wide, "ensemble_top3"),
             "ensemble_top5": ranking_table(wide, "ensemble_top5"),
             "fp_strength": ranking_table(wide, "fp_strength"),

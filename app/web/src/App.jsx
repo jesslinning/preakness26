@@ -1,4 +1,5 @@
 import {
+  Fragment,
   useCallback,
   useEffect,
   useMemo,
@@ -8,10 +9,19 @@ import { DefinitionsTab } from "./Definitions.jsx";
 import { GlossaryTerm } from "./GlossaryTerm.jsx";
 import { HorseLink } from "./HorseLink.jsx";
 import { exoticScenarioFromJsonMeta } from "./exoticScenarios.js";
+import { normalizeHorseName } from "./preaknessHorseUrls.js";
+import {
+  CORE_STRATEGY_TARGETS,
+  LONGSHOT_STRATEGY_TARGETS,
+  enrichHorses,
+  formatBlendReadout,
+  strategyLabel,
+} from "./scoring.js";
 
 const TABS = [
   { id: "overview", label: "Overview" },
   { id: "rankings", label: "Rankings" },
+  { id: "longshots", label: "Longshots" },
   { id: "exotics", label: "Exotics" },
   { id: "models", label: "Models" },
   { id: "definitions", label: "Definitions" },
@@ -77,16 +87,6 @@ function liveOddsUnreachableMessage() {
   return "Live odds need the Python API on the same host. In Railway, set the service Root Directory to the repository root (not app/web) and use the root railway.toml so FastAPI serves /api and the Vite build—see comment in /railway.toml.";
 }
 
-/** Match prediction CSV names to KYDerby.com widget names. */
-function normalizeHorseName(s) {
-  return String(s ?? "")
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .join(" ")
-    .toUpperCase();
-}
-
 function buildOddsLookup(apiHorses) {
   const m = new Map();
   for (const h of apiHorses ?? []) {
@@ -99,7 +99,7 @@ function buildOddsLookup(apiHorses) {
 /** @param {string | null | undefined} iso */
 function formatLiveOddsTimestamp(iso, tick) {
   void tick;
-  if (!iso) return { primary: "Live odds not loaded yet.", detail: "" };
+  if (!iso) return { primary: "HRN article odds not loaded yet.", detail: "" };
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return { primary: "Live odds time unavailable.", detail: "" };
   const abs = d.toLocaleString(undefined, {
@@ -113,30 +113,9 @@ function formatLiveOddsTimestamp(iso, tick) {
   else if (sec < 86400) rel = `${Math.floor(sec / 3600)}h ago`;
   else rel = `${Math.floor(sec / 86400)}d ago`;
   return {
-    primary: `Live odds as of ${abs} (${rel}).`,
+    primary: `HRN article odds as of ${abs} (${rel}).`,
     detail: `UTC equivalent: ${iso}`,
   };
-}
-
-function enrichHorses(horses, oddsLookup, marketAlpha) {
-  const a = Number(marketAlpha);
-  const alpha = Number.isFinite(a) ? Math.min(1, Math.max(0, a)) : 0.1;
-  return (horses ?? []).map((h) => {
-    const o = oddsLookup?.get(normalizeHorseName(h.horse_name));
-    const ms = o?.market_strength;
-    const cs = h.composite_score ?? 0;
-    const hasMs = ms != null && Number.isFinite(Number(ms));
-    const compositeWithMarket = hasMs
-      ? (1 - alpha) * cs + alpha * Number(ms)
-      : cs;
-    return {
-      ...h,
-      live_odds_str: o?.odds_str ?? null,
-      live_implied_probability: o?.implied_probability ?? null,
-      market_strength_live: hasMs ? Number(ms) : null,
-      composite_with_market: compositeWithMarket,
-    };
-  });
 }
 
 /** Sortable prediction table header: label + sort control + glossary icon (icon-only). */
@@ -184,9 +163,12 @@ export default function App() {
   const [tab, setTab] = useState("overview");
   const [definitionScrollTarget, setDefinitionScrollTarget] = useState(null);
   const [predictionSort, setPredictionSort] = useState({
-    key: "composite_with_market",
+    key: "composite_with_upside",
     dir: "desc",
   });
+  const [upsideBeta, setUpsideBeta] = useState(0);
+  const [upsidePercentDraft, setUpsidePercentDraft] = useState(null);
+  const [longshotsMlFilter, setLongshotsMlFilter] = useState(false);
   const [liveOdds, setLiveOdds] = useState(null);
   const [liveOddsBanner, setLiveOddsBanner] = useState(null);
   const [liveOddsRefreshing, setLiveOddsRefreshing] = useState(false);
@@ -339,21 +321,77 @@ export default function App() {
     setBlendPercentDraft(null);
   }, [blendPercentDraft]);
 
+  const commitUpsidePercentDraft = useCallback(() => {
+    if (upsidePercentDraft === null) return;
+    const t = upsidePercentDraft.trim().replace(/%$/u, "");
+    if (t === "") {
+      setUpsidePercentDraft(null);
+      return;
+    }
+    const n = parseFloat(t);
+    if (!Number.isFinite(n)) {
+      setUpsidePercentDraft(null);
+      return;
+    }
+    const clamped = Math.min(100, Math.max(0, n));
+    setUpsideBeta(Math.round(clamped * 10) / 1000);
+    setUpsidePercentDraft(null);
+  }, [upsidePercentDraft]);
+
   const oddsLookup = useMemo(
     () => buildOddsLookup(liveOdds?.horses),
     [liveOdds?.horses]
   );
 
   const horsesEnriched = useMemo(
-    () => enrichHorses(combined?.horses, oddsLookup, marketAlpha),
-    [combined?.horses, oddsLookup, marketAlpha]
+    () =>
+      enrichHorses(
+        combined?.horses,
+        oddsLookup,
+        marketAlpha,
+        upsideBeta,
+        normalizeHorseName
+      ),
+    [combined?.horses, oddsLookup, marketAlpha, upsideBeta]
   );
 
   const horsesSorted = useMemo(() => {
     if (!horsesEnriched.length) return [];
     return [...horsesEnriched].sort(
-      (a, b) => (b.composite_with_market ?? 0) - (a.composite_with_market ?? 0)
+      (a, b) => (b.composite_with_upside ?? 0) - (a.composite_with_upside ?? 0)
     );
+  }, [horsesEnriched]);
+
+  const longshotRows = useMemo(() => {
+    let rows = [...horsesEnriched];
+    if (longshotsMlFilter) {
+      rows = rows.filter(
+        (h) => Number(h.morn_line_implied_prob_field_rank) >= 4
+      );
+    }
+    return rows.sort(
+      (a, b) => (b.longshot_index ?? 0) - (a.longshot_index ?? 0)
+    );
+  }, [horsesEnriched, longshotsMlFilter]);
+
+  const compositeMedian = useMemo(() => {
+    const vals = horsesEnriched
+      .map((h) => h.composite_with_market)
+      .filter((v) => v != null && Number.isFinite(Number(v)));
+    if (!vals.length) return 0;
+    const sorted = [...vals].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+  }, [horsesEnriched]);
+
+  const longshotTopQ = useMemo(() => {
+    const vals = horsesEnriched
+      .map((h) => h.longshot_index)
+      .filter((v) => v != null && Number.isFinite(Number(v)));
+    if (!vals.length) return 0;
+    const sorted = [...vals].sort((a, b) => b - a);
+    const idx = Math.max(0, Math.ceil(sorted.length * 0.25) - 1);
+    return sorted[idx];
   }, [horsesEnriched]);
 
   const ts = formatLiveOddsTimestamp(liveOdds?.fetched_at, clockTick);
@@ -402,7 +440,7 @@ export default function App() {
 
   const maxComposite = useMemo(() => {
     if (!horsesSorted.length) return 1;
-    const scores = horsesSorted.map((h) => h.composite_with_market ?? 0);
+    const scores = horsesSorted.map((h) => h.composite_with_upside ?? 0);
     return Math.max(...scores, 1e-9);
   }, [horsesSorted]);
 
@@ -438,7 +476,7 @@ export default function App() {
     return (
       <div className="shell">
         <header className="hero">
-          <h1>Kentucky Derby prediction explorer</h1>
+          <h1>Preakness Stakes prediction explorer</h1>
         </header>
         <div className="card error">
           <strong>Could not load JSON.</strong> Run{" "}
@@ -459,45 +497,47 @@ export default function App() {
     );
   }
 
-  const w = scenarios.blend_weights ?? combined.blend_weights ?? {};
   const blendPercentTenth = Math.round(marketAlpha * 1000) / 10;
+  const upsidePercentTenth = Math.round(upsideBeta * 1000) / 10;
+  const blendReadout = formatBlendReadout(marketAlpha, upsideBeta);
 
   return (
     <div className="shell">
       <header className="hero">
-        <p className="eyebrow">Derby 2026 · ensemble view</p>
-        <h1>Kentucky Derby prediction explorer</h1>
+        <p className="eyebrow">Preakness 151 · Laurel Park · May 16, 2026</p>
+        <h1>Preakness Stakes prediction explorer</h1>
         <p className="lede">
-          Heuristic blend of top-3 / top-5 classifiers and finish-position models. Exotic
-          “naive” joints are illustrative softmax chains—not track prices.
+          Predictions for the Preakness Stakes using blended modeling strategies.
         </p>
-        <div className="weights">
-          <span className="pill">
-            top3 weight <strong>{w.ensemble_top3 ?? "—"}</strong>
-          </span>
-          <span className="pill">
-            top5 weight <strong>{w.ensemble_top5 ?? "—"}</strong>
-          </span>
-          <span className="pill">
-            FP strength weight <strong>{w.fp_strength ?? "—"}</strong>
-          </span>
-        </div>
-        <div className="live-odds-bar">
-          <p className="live-odds-bar__status" title={ts.detail}>
-            {ts.primary}
+        <div className="blend-panel">
+          <p className="blend-formula mono" aria-live="polite">
+            {blendReadout}
           </p>
+          <div className="live-odds-row">
+            <p className="live-odds-bar__status" title={ts.detail}>
+              {ts.primary}
+            </p>
+            <button
+              type="button"
+              className="live-odds-bar__refresh"
+              onClick={refreshLiveOddsManual}
+              disabled={liveOddsRefreshing}
+            >
+              {liveOddsRefreshing ? "Refreshing…" : "Refresh odds"}
+            </button>
+          </div>
           {liveOddsBanner ? (
             <p className="live-odds-bar__warn" role="status">
               {liveOddsBanner}
             </p>
           ) : null}
-          <div className="live-odds-bar__controls">
+          <div className="blend-sliders">
             <label className="live-odds-bar__slider">
               <span className="live-odds-bar__slider-label">
                 <GlossaryTerm
                   name="Market blend"
                   defId="market-blend"
-                  summary="Pool weight 0–100% mixed into the model composite when live odds match a horse (slider or type a percent)."
+                  summary="Step 1: blend HRN live odds into the core model score. 0% = models only; 100% = pool only."
                   onNavigate={goToDefinition}
                 >
                   Market blend (α)
@@ -553,14 +593,66 @@ export default function App() {
                 aria-label="Market blend percent slider"
               />
             </label>
-            <button
-              type="button"
-              className="live-odds-bar__refresh"
-              onClick={refreshLiveOddsManual}
-              disabled={liveOddsRefreshing}
-            >
-              {liveOddsRefreshing ? "Refreshing…" : "Refresh odds"}
-            </button>
+            <label className="live-odds-bar__slider">
+              <span className="live-odds-bar__slider-label">
+                <GlossaryTerm
+                  name="Upside blend"
+                  defId="upside-blend"
+                  summary="Step 2: blend longshot models into the result from Step 1. At 100%, α is ignored."
+                  onNavigate={goToDefinition}
+                >
+                  Upside blend (β)
+                </GlossaryTerm>{" "}
+                <span className="live-odds-bar__percent-inline" aria-live="polite">
+                  <span className="live-odds-bar__percent-field">
+                    <label htmlFor="upside-blend-percent" className="sr-only">
+                      Upside blend percent (0 to 100)
+                    </label>
+                    <input
+                      id="upside-blend-percent"
+                      type="text"
+                      inputMode="decimal"
+                      className="mono live-odds-bar__percent-input"
+                      autoComplete="off"
+                      spellCheck={false}
+                      value={
+                        upsidePercentDraft !== null
+                          ? upsidePercentDraft
+                          : String(upsidePercentTenth)
+                      }
+                      onChange={(e) => setUpsidePercentDraft(e.target.value)}
+                      onFocus={() => setUpsidePercentDraft(String(upsidePercentTenth))}
+                      onBlur={commitUpsidePercentDraft}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          commitUpsidePercentDraft();
+                          e.currentTarget.blur();
+                        }
+                      }}
+                    />
+                    <span className="live-odds-bar__percent-suffix" aria-hidden>
+                      %
+                    </span>
+                  </span>
+                </span>
+              </span>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                step={0.1}
+                value={upsidePercentTenth}
+                onChange={(e) => {
+                  const v = Number(e.target.value);
+                  setUpsideBeta(Math.round(v * 10) / 1000);
+                }}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={upsidePercentTenth}
+                aria-label="Upside blend percent slider"
+              />
+            </label>
           </div>
         </div>
         <p className="glossary-mobile-hint" role="note">
@@ -615,23 +707,22 @@ export default function App() {
         <section className="card">
           <h2 className="h2-with-glossary">
             <GlossaryTerm
-              name="Composite"
-              defId="composite-score"
-              summary="Model blend plus optional live market strength when odds match (same scale as exotic softmax scenarios)."
+              name="Blended score"
+              defId="composite-with-upside"
+              summary="Nested blend: core models, then live odds (α), then longshot models (β)—same column as Rankings and Exotics."
               onNavigate={goToDefinition}
             >
-              Composite score
+              Blended score
             </GlossaryTerm>{" "}
             <span className="h2-suffix">(top field)</span>
           </h2>
           <p className="muted">
-            Composite blends model rankings with optional live pool strength when odds match;
-            bar scale matches Rankings (max in field = 100%). Adjust the blend percentage (α)
-            above when live odds are loaded.
+            Bars use the displayed score after α and β in the header. Scale matches Rankings
+            (max in field = 100%).
           </p>
           <ul className="barlist">
             {horsesSorted.slice(0, 16).map((h) => {
-              const barScore = h.composite_with_market ?? 0;
+              const barScore = h.composite_with_upside ?? 0;
               return (
                 <li key={h.horse_name}>
                   <span className="bar-name-wrap">
@@ -685,19 +776,53 @@ export default function App() {
                     }
                   />
                   <PredictionSortHeader
-                    sortKey="composite_with_market"
-                    label="Composite"
+                    sortKey="composite_with_upside"
+                    label="Blended"
                     predictionSort={predictionSort}
                     onSort={togglePredictionSort}
                     glossary={
                       <GlossaryTerm
                         variant="icon-only"
-                        name="Composite"
-                        defId="composite-score"
-                        summary="Model blend plus optional live market strength when odds match (same scale as exotic softmax scenarios)."
+                        name="Blended score"
+                        defId="composite-with-upside"
+                        summary="Displayed ranking score after nested α (live odds) and β (longshot models)."
                         onNavigate={goToDefinition}
                       >
-                        Composite
+                        Blended
+                      </GlossaryTerm>
+                    }
+                  />
+                  <PredictionSortHeader
+                    sortKey="longshot_index"
+                    label="Longshot"
+                    predictionSort={predictionSort}
+                    onSort={togglePredictionSort}
+                    glossary={
+                      <GlossaryTerm
+                        variant="icon-only"
+                        name="Longshot index"
+                        defId="longshot-index"
+                        summary="Rank-normalized blend of three longshot strategies (ML beat, strict top-5, broad top-5)."
+                        onNavigate={goToDefinition}
+                      >
+                        Longshot
+                      </GlossaryTerm>
+                    }
+                  />
+                  <PredictionSortHeader
+                    sortKey="upside_gap"
+                    label="Upside gap"
+                    predictionSort={predictionSort}
+                    onSort={togglePredictionSort}
+                    glossary={
+                      <GlossaryTerm
+                        variant="icon-only"
+                        name="Upside gap"
+                        defId="upside-gap"
+                        summary="Longshot index minus live market strength—positive means models like the horse more than the pool."
+                        onNavigate={goToDefinition}
+                      >
+                        Upside gap
                       </GlossaryTerm>
                     }
                   />
@@ -711,7 +836,7 @@ export default function App() {
                         variant="icon-only"
                         name="Live odds"
                         defId="live-odds-col"
-                        summary="Fractional pool-style odds from the official live odds page (matched by horse name). Sort uses implied win probability."
+                        summary="Fractional odds from the HRN Preakness article (matched by horse name). Sort uses implied win probability."
                         onNavigate={goToDefinition}
                       >
                         Live odds
@@ -806,12 +931,27 @@ export default function App() {
                 </tr>
               </thead>
               <tbody>
-                {predictionRows.map((h) => (
+                {predictionRows.map((h) => {
+                  const divergent =
+                    h.longshot_index != null &&
+                    h.composite_with_market != null &&
+                    h.longshot_index >= longshotTopQ &&
+                    h.composite_with_market <= compositeMedian;
+                  return (
                   <tr key={h.horse_name}>
                     <td>
                       <HorseLink name={h.horse_name} />
+                      {divergent ? (
+                        <span className="divergence-badge" title="Top longshot models, weaker core composite">
+                          Upside
+                        </span>
+                      ) : null}
                     </td>
-                    <td className="mono">{fmtScore(h.composite_with_market)}</td>
+                    <td className="mono">{fmtScore(h.composite_with_upside)}</td>
+                    <td className="mono">{fmtScore(h.longshot_index)}</td>
+                    <td className="mono">
+                      {h.upside_gap != null ? fmtScore(h.upside_gap) : "—"}
+                    </td>
                     <td className="mono">
                       {h.live_odds_str ?? "—"}
                     </td>
@@ -820,6 +960,67 @@ export default function App() {
                     <td className="mono">{fmtScore(h.ensemble_top5)}</td>
                     <td className="mono">{fmtScore(h.fp_strength)}</td>
                     <td className="mono">{fmtScore(h.ensemble_fp_mean)}</td>
+                  </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {tab === "longshots" && (
+        <section className="card">
+          <h2>Longshot rankings</h2>
+          <p className="muted">
+            Sorted by <strong>longshot index</strong> (three blend strategies). Use β in the
+            header to fold this into the main Rankings blended score.
+          </p>
+          <p className="longshots-filter">
+            <label>
+              <input
+                type="checkbox"
+                checked={longshotsMlFilter}
+                onChange={(e) => setLongshotsMlFilter(e.target.checked)}
+              />{" "}
+              Only horses with morning-line implied rank ≥ 4 (longer prices)
+            </label>
+          </p>
+          <div className="table-wrap">
+            <table className="data dense">
+              <thead>
+                <tr>
+                  <th>Horse</th>
+                  <th className="mono">ML rank</th>
+                  <th className="mono">Longshot idx</th>
+                  <th className="mono">ML beat</th>
+                  <th className="mono">Top5 strict</th>
+                  <th className="mono">Top5 broad</th>
+                  <th className="mono">Core composite</th>
+                  <th className="mono">Live odds</th>
+                  <th className="mono">Upside gap</th>
+                </tr>
+              </thead>
+              <tbody>
+                {longshotRows.map((h) => (
+                  <tr key={h.horse_name}>
+                    <td>
+                      <HorseLink name={h.horse_name} />
+                    </td>
+                    <td className="mono">
+                      {h.morn_line_implied_prob_field_rank != null
+                        ? Number(h.morn_line_implied_prob_field_rank).toFixed(0)
+                        : "—"}
+                    </td>
+                    <td className="mono">{fmtScore(h.longshot_index)}</td>
+                    <td className="mono">{fmtScore(h.ml_beat_strength)}</td>
+                    <td className="mono">{fmtScore(h.longshot_top5_strict)}</td>
+                    <td className="mono">{fmtScore(h.longshot_top5_broad)}</td>
+                    <td className="mono">{fmtScore(h.composite_with_market)}</td>
+                    <td className="mono">{h.live_odds_str ?? "—"}</td>
+                    <td className="mono">
+                      {h.upside_gap != null ? fmtScore(h.upside_gap) : "—"}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -861,38 +1062,107 @@ export default function App() {
         </section>
       )}
 
-      {tab === "definitions" && <DefinitionsTab />}
+      {tab === "definitions" && (
+        <DefinitionsTab
+          blendWeights={combined.blend_weights}
+          longshotBlendWeights={combined.longshot_blend_weights}
+        />
+      )}
 
       {tab === "models" && (
-        <section className="card">
-          <h2>Source models ({combined.meta?.length ?? 0})</h2>
-          <div className="table-wrap">
-            <table className="data dense">
-              <thead>
-                <tr>
-                  <th>Target</th>
-                  <th>Model</th>
-                  <th>ID</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(combined.meta ?? []).map((m) => (
-                  <tr key={m.column_name}>
-                    <td>
-                      <span className={`tag tag-${m.target.replace("target_", "")}`}>
-                        {m.target}
-                      </span>
-                    </td>
-                    <td className="break">{m.model_label}</td>
-                    <td className="mono muted">{m.model_id}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
+        <ModelsTab strategies={combined.strategies ?? []} />
       )}
     </div>
+  );
+}
+
+function ModelsTab({ strategies }) {
+  const [expanded, setExpanded] = useState(() => new Set());
+
+  const core = strategies.filter((s) => CORE_STRATEGY_TARGETS.includes(s.target));
+  const longshot = strategies.filter((s) =>
+    LONGSHOT_STRATEGY_TARGETS.includes(s.target)
+  );
+
+  const toggle = (target) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(target)) next.delete(target);
+      else next.add(target);
+      return next;
+    });
+  };
+
+  const renderGroup = (title, items, tagClass) => (
+    <div className="models-group" key={title}>
+      <h3>{title}</h3>
+      <div className="table-wrap">
+        <table className="data dense">
+          <thead>
+            <tr>
+              <th>Strategy</th>
+              <th>Blend model</th>
+              <th>Type</th>
+              <th aria-label="Expand child models" />
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((s) => {
+              const open = expanded.has(s.target);
+              return (
+                <Fragment key={s.target}>
+                  <tr>
+                    <td>
+                      <span className={`tag tag-${tagClass}`}>
+                        {strategyLabel(s.target)}
+                      </span>
+                    </td>
+                    <td className="break">{s.blend_model_label}</td>
+                    <td className="muted">{s.blend_model_type}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className="models-expand-btn"
+                        aria-expanded={open}
+                        onClick={() => toggle(s.target)}
+                      >
+                        {open ? "Hide" : `${s.child_models?.length ?? 0} models`}
+                      </button>
+                    </td>
+                  </tr>
+                  {open
+                    ? (s.child_models ?? []).map((c) => (
+                        <tr key={`${s.target}-${c.model_id}`} className="models-child">
+                          <td colSpan={2} className="muted">
+                            ↳ {c.model_label}
+                          </td>
+                          <td className="mono muted">CV {fmtScore(c.cv_score)}</td>
+                          <td className="mono muted">{c.model_id}</td>
+                        </tr>
+                      ))
+                    : null}
+                </Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
+  return (
+    <section className="card">
+      <h2>Blend strategies ({strategies.length})</h2>
+      <p className="muted">
+        Six DataRobot average blends—three core (finish / top 3 / top 5) and three longshot.
+        Each row is one output file; expand to see five child models in the blender.
+      </p>
+      {core.length ? renderGroup("Core strategies", core, "core") : null}
+      {longshot.length ? renderGroup("Longshot strategies", longshot, "longshot") : null}
+      {!strategies.length ? (
+        <p className="muted">No strategy metadata in bundle. Re-run `npm run data`.</p>
+      ) : null}
+    </section>
   );
 }
 

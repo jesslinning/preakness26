@@ -1,0 +1,34 @@
+{
+  "target": "target_top3",
+  "blend_model_id": "6a089be152675f00f34062bc",
+  "blend_model_label": "Average Blend (top 5 CV)",
+  "blend_model_type": "AVG Blender",
+  "prediction_path": "/Users/colbymiller/Documents/Jess Projects/Preakness/preakness26/data prep/data/predictions/predictions_target_top3.csv",
+  "child_models": [
+    {
+      "model_id": "6a089350451f9611de98f24c",
+      "model_label": "Elastic-Net Classifier (mixing alpha=0.5 / Binomial Deviance)",
+      "cv_score": 0.309274
+    },
+    {
+      "model_id": "6a0894084ebb8b3e9a4c6a4e",
+      "model_label": "Elastic-Net Classifier (mixing alpha=0.5 / Binomial Deviance)",
+      "cv_score": 0.375222
+    },
+    {
+      "model_id": "6a089236d7c79f0b45d3d446",
+      "model_label": "Elastic-Net Classifier (mixing alpha=0.5 / Binomial Deviance)",
+      "cv_score": 0.42138400000000004
+    },
+    {
+      "model_id": "6a08796aa0b90516dd8e6452",
+      "model_label": "Regularized Logistic Regression (L2)",
+      "cv_score": 0.47057
+    },
+    {
+      "model_id": "6a08796aa0b90516dd8e6459",
+      "model_label": "eXtreme Gradient Boosted Trees Classifier (learning rate =0.01)",
+      "cv_score": 0.48353
+    }
+  ]
+}

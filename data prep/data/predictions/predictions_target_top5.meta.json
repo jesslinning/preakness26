@@ -1,0 +1,34 @@
+{
+  "target": "target_top5",
+  "blend_model_id": "6a089c4d95b6bed23123eab7",
+  "blend_model_label": "Average Blend (top 5 CV)",
+  "blend_model_type": "AVG Blender",
+  "prediction_path": "/Users/colbymiller/Documents/Jess Projects/Preakness/preakness26/data prep/data/predictions/predictions_target_top5.csv",
+  "child_models": [
+    {
+      "model_id": "6a08797224721d83f7e105f4",
+      "model_label": "Eureqa Classifier (Default Search: 3000 Generations)",
+      "cv_score": 0.473276
+    },
+    {
+      "model_id": "6a08797224721d83f7e105e5",
+      "model_label": "ExtraTrees Classifier (Gini)",
+      "cv_score": 0.484808
+    },
+    {
+      "model_id": "6a08797324721d83f7e10609",
+      "model_label": "LightGBM Random Forest Classifier",
+      "cv_score": 0.50707
+    },
+    {
+      "model_id": "6a08797224721d83f7e105f7",
+      "model_label": "Generalized Additive Model",
+      "cv_score": 0.531496
+    },
+    {
+      "model_id": "6a08797224721d83f7e105e8",
+      "model_label": "Auto-tuned K-Nearest Neighbors Classifier (Euclidean Distance)",
+      "cv_score": 0.555462
+    }
+  ]
+}

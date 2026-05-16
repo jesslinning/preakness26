@@ -134,6 +134,9 @@ def attach_derby_labels_to_pp_long(
             "year",
             "target_top3",
             "target_top5",
+            "target_ml_rank_minus_finish",
+            "target_top5_ml_rank_gt4",
+            "target_deep_closer_top5",
         )
         if c in wide_labeled.columns
     ]

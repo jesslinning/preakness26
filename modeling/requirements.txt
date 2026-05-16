@@ -1,0 +1,6 @@
+# Local / modeling-only (not pulled in by app/requirements.txt)
+# Install: cd modeling && sh install_deps.sh   (no global pip needed; uses .venv + python -m pip)
+datarobot>=3.3
+datarobotx-idp>=0.2
+python-dotenv>=1.0
+pandas>=2.0
